@@ -1,8 +1,0 @@
-{
-  "display_name": "Demo User",
-  "email": "demo@statspotify.com",
-  "images": [{"url": "https://i.pravatar.cc/150?img=68"}],
-  "country": "US",
-  "followers": {"total": 42},
-  "product": "premium"
-}

@@ -9,7 +9,6 @@ const SCOPES = 'user-top-read user-read-private user-read-email';
 const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 
-let demoMode = false;
 let currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
 let allData = { topTracks: [], topArtists: [], playlists: [] }; // Store unfiltered data for search
 let chartData = { short_term: [], medium_term: [], long_term: [] }; // Store different time ranges
@@ -276,7 +275,6 @@ async function onLogout(){
 
 /* ---------- Fetch & render ---------- */
 async function fetchAndRender(tokenObj){
-  demoMode = false;
   showNotice('Loading your Spotify stats...');
   try{
     const access_token = tokenObj.access_token;
@@ -330,41 +328,6 @@ async function apiGet(path, access_token){
   const resp = await fetch('https://api.spotify.com' + path, {headers:{Authorization:'Bearer '+access_token}});
   if (!resp.ok) throw new Error('API error '+resp.status);
   return await resp.json();
-}
-
-/* ---------- Demo / sample data ---------- */
-async function loadDemo(){
-  demoMode = true;
-  showNotice('Loading demo data...');
-  const resp = await fetch('sample_data.json');
-  const demo = await resp.json();
-  
-  chartData = {
-    short_term: demo.top_tracks || [],
-    medium_term: demo.top_tracks || [],
-    long_term: demo.top_tracks || []
-  };
-  
-  allData = {
-    topTracks: demo.top_tracks || [],
-    topArtists: demo.top_artists || [],
-    playlists: demo.playlists || []
-  };
-  
-  currentData = {
-    me: demo.profile,
-    topTracks: demo.top_tracks || [],
-    topArtists: demo.top_artists || [],
-    playlists: demo.playlists || []
-  };
-  
-  renderProfile(demo.profile);
-  renderHomeView();
-  renderTopTracksView();
-  renderTopArtistsView();
-  renderPlaylistsView();
-  renderChart();
-  hideNotice();
 }
 
 /* ---------- Search ---------- */
@@ -601,18 +564,31 @@ function renderChart(){
   let data = [];
   let labels = [];
   
-  // If a track is selected, show its data (or "no data" message)
+  // If a track is selected, show its data
   if (selectedTrackForChart) {
-    // For real implementation, track would have history data
-    // For now, show "No data" message
-    ctx.fillStyle = '#b3b3b3';
-    ctx.font = '16px Inter, system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('No data available. Play song to load history.', width / 2, height / 2);
-    return;
-  }
-  
-  if (currentPeriod === 'week') {
+    // Check if track has history data
+    if (selectedTrackForChart.history && selectedTrackForChart.history[currentPeriod]) {
+      data = selectedTrackForChart.history[currentPeriod];
+      
+      // Generate labels based on period
+      if (currentPeriod === 'week') {
+        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      } else if (currentPeriod === 'month') {
+        labels = Array.from({length: data.length}, (_, i) => `Day ${i + 1}`);
+      } else if (currentPeriod === '6months') {
+        labels = Array.from({length: data.length}, (_, i) => `Week ${i + 1}`);
+      } else if (currentPeriod === 'year') {
+        labels = Array.from({length: data.length}, (_, i) => `Week ${i + 1}`);
+      }
+    } else {
+      // Track doesn't have history data
+      ctx.fillStyle = '#b3b3b3';
+      ctx.font = '16px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No data available for this track.', width / 2, height / 2);
+      return;
+    }
+  } else if (currentPeriod === 'week') {
     // Simulate weekly data from short term
     const tracks = chartData.short_term.slice(0, 10);
     labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -825,4 +801,4 @@ function clearTrackSelection() {
 }
 
 // expose small helper for debugging
-window.statspotify = {loadDemo, onLoginClicked, onLogout, attemptRefresh, switchView};
+window.statspotify = {onLoginClicked, onLogout, attemptRefresh, switchView};
