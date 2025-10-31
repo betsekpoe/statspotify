@@ -5,16 +5,17 @@
 // NOTE: token exchange happens server-side in /api/exchange (keeps client secret safe).
 const CLIENT_ID = 'f08fbf07534e4f399933d3b12e54f6fd';
 const REDIRECT_URI = window.location.origin + window.location.pathname;
-const SCOPES = 'user-top-read user-read-private user-read-email';
+const SCOPES = 'user-top-read user-read-private user-read-email user-read-recently-played';
 const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 
-let currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
-let allData = { topTracks: [], topArtists: [], playlists: [] }; // Store unfiltered data for search
+let currentData = { me: null, topTracks: [], topArtists: [], playlists: [], recentlyPlayed: [] };
+let allData = { topTracks: [], topArtists: [], playlists: [], recentlyPlayed: [] }; // Store unfiltered data for search
 let chartData = { short_term: [], medium_term: [], long_term: [] }; // Store different time ranges
 let currentPeriod = 'week';
 let selectedTrackForChart = null; // Track selected for chart focus
 let isSearching = false; // Track if user is actively searching
+let lastFetchTime = null; // Track when data was last fetched
 
 // Cache for track details
 let trackDetailsCache = {};
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   showLoading();
   document.getElementById('login-btn').addEventListener('click', onLoginClicked);
   document.getElementById('logout-btn').addEventListener('click', onLogout);
+  document.getElementById('refresh-btn').addEventListener('click', onRefresh);
   document.getElementById('brand-btn').addEventListener('click', () => switchView('home'));
   
   // Mobile login button
@@ -311,15 +313,18 @@ async function attemptRefresh(){
 function showLoggedIn(is){
   const loginBtn = document.getElementById('login-btn');
   const logoutBtn = document.getElementById('logout-btn');
+  const refreshBtn = document.getElementById('refresh-btn');
   const mobileLoginBtn = document.getElementById('mobile-login-btn');
   
   if (is) {
     if (loginBtn) loginBtn.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = '';
+    if (refreshBtn) refreshBtn.style.display = '';
     if (mobileLoginBtn) mobileLoginBtn.style.display = 'none';
   } else {
     if (loginBtn) loginBtn.style.display = '';
     if (logoutBtn) logoutBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
     if (mobileLoginBtn) mobileLoginBtn.style.display = 'block';
   }
 }
@@ -330,7 +335,8 @@ async function onLogout(){
   }catch(e){console.warn('logout call failed', e)}
   localStorage.removeItem('spotify_token');
   showLoggedIn(false);
-  currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
+  currentData = { me: null, topTracks: [], topArtists: [], playlists: [], recentlyPlayed: [] };
+  lastFetchTime = null;
   
   // Show hero section again
   const heroSection = document.getElementById('hero-section');
@@ -343,8 +349,23 @@ async function onLogout(){
   document.getElementById('top-tracks').innerHTML = '';
   document.getElementById('top-artists').innerHTML = '';
   document.getElementById('playlists').innerHTML = '';
+  const recentContainer = document.getElementById('recently-played-tracks');
+  if (recentContainer) recentContainer.innerHTML = '';
   switchView('home');
   showNotice('Signed out');
+}
+
+async function onRefresh(){
+  const token = getStoredToken();
+  if (!token) {
+    showNotice('Please log in first');
+    return;
+  }
+  
+  showNotice('Refreshing data...');
+  await fetchAndRender(token);
+  showNotice('Data refreshed!');
+  setTimeout(hideNotice, 2000);
 }
 
 /* ---------- Fetch & render ---------- */
@@ -360,12 +381,13 @@ async function fetchAndRender(tokenObj){
     renderProfile(me);
     
     // Fetch all data in parallel for better performance
-    const [shortTerm, mediumTerm, longTerm, topArtists, playlists] = await Promise.all([
+    const [shortTerm, mediumTerm, longTerm, topArtists, playlists, recentlyPlayed] = await Promise.all([
       apiGet('/v1/me/top/tracks?limit=50&time_range=short_term', access_token),
       apiGet('/v1/me/top/tracks?limit=50&time_range=medium_term', access_token),
       apiGet('/v1/me/top/tracks?limit=50&time_range=long_term', access_token),
       apiGet('/v1/me/top/artists?limit=50&time_range=medium_term', access_token),
-      apiGet('/v1/me/playlists?limit=50', access_token)
+      apiGet('/v1/me/playlists?limit=50', access_token),
+      apiGet('/v1/me/player/recently-played?limit=50', access_token)
     ]);
     
     chartData = {
@@ -378,21 +400,27 @@ async function fetchAndRender(tokenObj){
     allData = {
       topTracks: mediumTerm.items,
       topArtists: topArtists.items,
-      playlists: playlists.items
+      playlists: playlists.items,
+      recentlyPlayed: recentlyPlayed.items.map(item => item.track)
     };
     
     currentData = {
       me,
       topTracks: mediumTerm.items,
       topArtists: topArtists.items,
-      playlists: playlists.items
+      playlists: playlists.items,
+      recentlyPlayed: recentlyPlayed.items.map(item => item.track)
     };
+    
+    // Store fetch timestamp
+    lastFetchTime = new Date();
     
     // Render views progressively
     renderHomeView();
     renderTopTracksView();
     renderTopArtistsView();
     renderPlaylistsView();
+    renderRecentlyPlayedView();
     renderChart();
     
     hideNotice();
@@ -537,6 +565,7 @@ function switchView(view){
     'home': 'view-home',
     'top-tracks': 'view-top-tracks',
     'top-artists': 'view-top-artists',
+    'recently-played': 'view-recently-played',
     'charts': 'view-charts',
     'playlists': 'view-playlists'
   };
@@ -571,6 +600,23 @@ function renderHomeView(){
   // Hide hero section when logged in
   const heroSection = document.getElementById('hero-section');
   if (heroSection) heroSection.style.display = 'none';
+  
+  // Update last updated timestamp
+  if (lastFetchTime) {
+    const now = new Date();
+    const diffMinutes = Math.floor((now - lastFetchTime) / 60000);
+    const lastUpdatedEl = document.getElementById('last-updated');
+    if (lastUpdatedEl) {
+      if (diffMinutes < 1) {
+        lastUpdatedEl.textContent = 'Updated just now';
+      } else if (diffMinutes < 60) {
+        lastUpdatedEl.textContent = `Updated ${diffMinutes}m ago`;
+      } else {
+        const diffHours = Math.floor(diffMinutes / 60);
+        lastUpdatedEl.textContent = `Updated ${diffHours}h ago`;
+      }
+    }
+  }
   
   renderCards({topTracks: currentData.topTracks.slice(0,6), topArtists: currentData.topArtists.slice(0,6)});
   // Don't show rank numbers when searching
@@ -625,6 +671,43 @@ function renderPlaylistsView(){
     }
     
     fragment.appendChild(card);
+  }
+  
+  container.appendChild(fragment);
+}
+
+function renderRecentlyPlayedView(){
+  const container = document.getElementById('recently-played-tracks');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  const fragment = document.createDocumentFragment();
+  const tracks = currentData.recentlyPlayed || [];
+  
+  for (let i = 0; i < tracks.length; i++){
+    const t = tracks[i];
+    const row = el('div',{class:'track'});
+    
+    const img = t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : '';
+    const imgEl = el('img',{src:img,alt:t.name});
+    imgEl.loading = 'lazy';
+    row.appendChild(imgEl);
+    
+    const meta = el('div',{class:'meta'});
+    meta.appendChild(el('div',{class:'name'},[document.createTextNode(t.name)]));
+    const artists = (t.artists || []).map(a=>a.name).join(', ');
+    meta.appendChild(el('div',{class:'artist'},[document.createTextNode(artists)]));
+    row.appendChild(meta);
+    
+    // Make track clickable to open in Spotify
+    row.style.cursor = 'pointer';
+    if (t.external_urls && t.external_urls.spotify) {
+      row.addEventListener('click', () => {
+        window.open(t.external_urls.spotify, '_blank');
+      });
+    }
+    
+    fragment.appendChild(row);
   }
   
   container.appendChild(fragment);

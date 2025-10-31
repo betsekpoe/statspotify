@@ -19,10 +19,14 @@
       <nav class="nav">
         <button class="nav-item" data-view="top-tracks">Top Tracks</button>
         <button class="nav-item" data-view="top-artists">Top Artists</button>
+        <button class="nav-item" data-view="recently-played">Recently Played</button>
         <button class="nav-item" data-view="charts">Charts</button>
         <button class="nav-item" data-view="playlists">Playlists</button>
       </nav>
       <div class="sidebar-bottom">
+        <button id="refresh-btn" class="btn" style="display:none">
+          <span>🔄</span> Refresh Data
+        </button>
         <button id="login-btn" class="btn primary">Connect Spotify</button>
         <button id="logout-btn" class="btn" style="display:none">Sign out</button>
       </div>
@@ -58,7 +62,10 @@
           </section>
 
           <section class="list-section">
-            <h2 id="home-tracks-heading">Recent Top Tracks</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <h2 id="home-tracks-heading" style="margin:0">Recent Top Tracks</h2>
+              <span id="last-updated" style="font-size:12px;color:#b3b3b3"></span>
+            </div>
             <div id="home-top-tracks" class="track-list">
               <!-- track rows populated here -->
             </div>
@@ -68,6 +75,7 @@
         <!-- Top Tracks View -->
         <section class="view-section" id="view-top-tracks">
           <h1>Top Tracks</h1>
+          <p class="view-subtitle">📊 Note: Spotify updates this data every few days. Use "Recently Played" for real-time listening.</p>
           <div id="top-tracks" class="track-list">
             <!-- track rows populated here -->
           </div>
@@ -76,6 +84,7 @@
         <!-- Top Artists View -->
         <section class="view-section" id="view-top-artists">
           <h1>Top Artists</h1>
+          <p class="view-subtitle">📊 Note: Spotify updates this data every few days. Use "Recently Played" for real-time listening.</p>
           <div id="top-artists" class="artist-grid">
             <!-- artist cards populated here -->
           </div>
@@ -86,6 +95,15 @@
           <h1>Your Playlists</h1>
           <div id="playlists" class="playlist-grid">
             <!-- playlist cards populated here -->
+          </div>
+        </section>
+
+        <!-- Recently Played View -->
+        <section class="view-section" id="view-recently-played">
+          <h1>Recently Played</h1>
+          <p class="view-subtitle">Your last 50 played tracks (real-time data)</p>
+          <div id="recently-played-tracks" class="track-list">
+            <!-- track rows populated here -->
           </div>
         </section>
 
@@ -264,6 +282,10 @@
       <button class="mobile-nav-item" data-view="top-artists" title="Top Artists">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
         <span>Artists</span>
+      </button>
+      <button class="mobile-nav-item" data-view="recently-played" title="Recently Played">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3v9.28c-.47-.17-.97-.28-1.5-.28-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6.5z"/></svg>
+        <span>Recent</span>
       </button>
       <button class="mobile-nav-item" data-view="charts" title="Charts">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>
