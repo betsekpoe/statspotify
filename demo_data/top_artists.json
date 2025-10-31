@@ -1,82 +1,82 @@
 [
   {
     "id": "artist1",
-    "name": "The Weeknd",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb214f3cf1cbe7139c1e26ffbb"}],
-    "followers": {"total": 75234567},
-    "genres": ["canadian pop", "pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ"}
+    "name": "Sinach",
+    "images": [{"url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400"}],
+    "followers": {"total": 2845678},
+    "genres": ["nigerian gospel", "contemporary worship"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/sinach"}
   },
   {
     "id": "artist2",
-    "name": "Dua Lipa",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5ebb99cacf8acd537820676726"}],
-    "followers": {"total": 68123456},
-    "genres": ["dance pop", "pop", "uk pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/6M2wZ9GZgrQXHCFfjv46we"}
+    "name": "Nathaniel Bassey",
+    "images": [{"url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"}],
+    "followers": {"total": 1923456},
+    "genres": ["nigerian gospel", "worship"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/nathanielbassey"}
   },
   {
     "id": "artist3",
-    "name": "Olivia Rodrigo",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb9e0e0e0e0e0e0e0e0e0e0e0e"}],
-    "followers": {"total": 42345678},
-    "genres": ["pop", "pop rock"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/1McMsnEElThX1knmY4oliG"}
+    "name": "Tim Godfrey",
+    "images": [{"url": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400"}],
+    "followers": {"total": 1567890},
+    "genres": ["nigerian gospel", "afro gospel"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/timgodfrey"}
   },
   {
     "id": "artist4",
-    "name": "The Kid LAROI",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb1a1a1a1a1a1a1a1a1a1a1a1a"}],
-    "followers": {"total": 28456789},
-    "genres": ["australian hip hop", "pop rap"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/2tIP7SsRs7vjIcLrU85W8J"}
+    "name": "Mercy Chinwo",
+    "images": [{"url": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400"}],
+    "followers": {"total": 2134567},
+    "genres": ["nigerian gospel", "contemporary christian"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/mercychinwo"}
   },
   {
     "id": "artist5",
-    "name": "Justin Bieber",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb8ae7f2aaa9817a704a87ea36"}],
-    "followers": {"total": 84567890},
-    "genres": ["canadian pop", "pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/1uNFoZAHBGtllmzznpCI3s"}
+    "name": "Frank Edwards",
+    "images": [{"url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400"}],
+    "followers": {"total": 1756789},
+    "genres": ["nigerian gospel", "contemporary worship"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/frankedwards"}
   },
   {
     "id": "artist6",
-    "name": "Glass Animals",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb2b2b2b2b2b2b2b2b2b2b2b2b"}],
-    "followers": {"total": 15678901},
-    "genres": ["indietronica", "modern rock", "shimmer pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/4yvcSjfu4PC0CYQyLy4wSq"}
+    "name": "Ada Ehi",
+    "images": [{"url": "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400"}],
+    "followers": {"total": 1678901},
+    "genres": ["nigerian gospel", "worship"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/adaehi"}
   },
   {
     "id": "artist7",
-    "name": "Lil Nas X",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb3c3c3c3c3c3c3c3c3c3c3c3c"}],
-    "followers": {"total": 19876543},
-    "genres": ["pop rap", "viral pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/7jVv8c5Fj3E9VhNjxT4snq"}
+    "name": "Tope Alabi",
+    "images": [{"url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"}],
+    "followers": {"total": 1345678},
+    "genres": ["yoruba gospel", "traditional gospel"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/topealabi"}
   },
   {
     "id": "artist8",
-    "name": "Ed Sheeran",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb4d4d4d4d4d4d4d4d4d4d4d4d"}],
-    "followers": {"total": 89012345},
-    "genres": ["pop", "singer-songwriter pop", "uk pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"}
+    "name": "Eben",
+    "images": [{"url": "https://images.unsplash.com/photo-1463453091185-61582044d556?w=400"}],
+    "followers": {"total": 1234567},
+    "genres": ["nigerian gospel", "afro gospel"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/eben"}
   },
   {
     "id": "artist9",
-    "name": "Harry Styles",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb5e5e5e5e5e5e5e5e5e5e5e5e"}],
-    "followers": {"total": 45678901},
-    "genres": ["pop", "uk pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/6KImCVD70vtIoJWnq6nGn3"}
+    "name": "Judikay",
+    "images": [{"url": "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400"}],
+    "followers": {"total": 1567890},
+    "genres": ["nigerian gospel", "contemporary worship"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/judikay"}
   },
   {
     "id": "artist10",
-    "name": "Taylor Swift",
-    "images": [{"url": "https://i.scdn.co/image/ab6761610000e5eb6f6f6f6f6f6f6f6f6f6f6f6f"}],
-    "followers": {"total": 92345678},
-    "genres": ["pop", "country", "synth-pop"],
-    "external_urls": {"spotify": "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02"}
+    "name": "Steve Crown",
+    "images": [{"url": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400"}],
+    "followers": {"total": 1456789},
+    "genres": ["nigerian gospel", "worship"],
+    "external_urls": {"spotify": "https://open.spotify.com/artist/stevecrown"}
   }
 ]
