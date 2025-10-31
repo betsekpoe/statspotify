@@ -961,12 +961,26 @@ async function showTrackDetails(track) {
     if (!token) {
       showNotice('Please log in to view track details');
       hideLoading();
+      switchView('home');
       return;
     }
     
-    // Fetch audio features
-    const features = await apiGet(`/v1/audio-features/${track.id}`, token.access_token);
-    const trackInfo = await apiGet(`/v1/tracks/${track.id}`, token.access_token);
+    // First, try to fetch basic track info (doesn't require special scopes)
+    let trackInfo;
+    try {
+      trackInfo = await apiGet(`/v1/tracks/${track.id}`, token.access_token);
+    } catch (err) {
+      // If track info fails, token might be expired
+      if (err.message.includes('401') || err.message.includes('403')) {
+        showNotice('Session expired. Please log in again.');
+        localStorage.removeItem('spotify_token');
+        hideLoading();
+        switchView('home');
+        showLoggedIn(false);
+        return;
+      }
+      throw err;
+    }
     
     // Populate basic info
     const img = trackInfo.album?.images?.[0]?.url || '';
@@ -997,8 +1011,31 @@ async function showTrackDetails(track) {
     else popularityDesc = '💎 Hidden gem waiting to be discovered.';
     document.getElementById('popularity-description').textContent = popularityDesc;
     
+    // Try to fetch audio features (may fail if user doesn't have proper permissions)
+    let features = null;
+    try {
+      features = await apiGet(`/v1/audio-features/${track.id}`, token.access_token);
+    } catch (err) {
+      console.warn('Could not fetch audio features:', err.message);
+      // Show a message that audio features are unavailable
+      document.getElementById('mood-classification').textContent = 'Audio features unavailable for this track';
+      const container = document.getElementById('track-insights');
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;">Audio analysis not available for this track. Some features require additional permissions.</p>';
+      
+      // Hide audio features that we can't display
+      const audioGrid = document.querySelector('.audio-features-grid');
+      if (audioGrid) audioGrid.style.opacity = '0.5';
+      
+      hideLoading();
+      return;
+    }
+    
     // Audio features
     if (features) {
+      // Reset audio grid opacity in case it was dimmed before
+      const audioGrid = document.querySelector('.audio-features-grid');
+      if (audioGrid) audioGrid.style.opacity = '1';
+      
       // Tempo
       const tempo = Math.round(features.tempo);
       document.getElementById('track-tempo').textContent = `${tempo} BPM`;
