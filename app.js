@@ -1060,7 +1060,7 @@ async function showTrackDetails(track) {
     hideLoading();
   } catch (err) {
     console.error('Error fetching track details:', err);
-    showNotice('Failed to load track details. Please try again.');
+    showNotice('Failed to load track details. Please try again later.');
     hideLoading();
     switchView('home');
   }
