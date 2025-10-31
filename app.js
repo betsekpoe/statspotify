@@ -12,6 +12,8 @@ const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 let demoMode = false;
 let currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
 let allData = { topTracks: [], topArtists: [], playlists: [] }; // Store unfiltered data for search
+let chartData = { short_term: [], medium_term: [], long_term: [] }; // Store different time ranges
+let currentPeriod = 'week';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-btn').addEventListener('click', onLoginClicked);
@@ -41,6 +43,17 @@ document.addEventListener('DOMContentLoaded', () => {
     item.addEventListener('click', (e) => {
       const view = e.currentTarget.getAttribute('data-view');
       switchView(view);
+    });
+  });
+  
+  // Setup chart period buttons
+  document.querySelectorAll('.chart-period-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const period = e.target.getAttribute('data-period');
+      currentPeriod = period;
+      document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      renderChart();
     });
   });
   
@@ -259,20 +272,31 @@ async function fetchAndRender(tokenObj){
   try{
     const access_token = tokenObj.access_token;
     const me = await apiGet('/v1/me', access_token);
-    const topTracks = await apiGet('/v1/me/top/tracks?limit=50&time_range=medium_term', access_token);
+    
+    // Fetch different time ranges for charts
+    const shortTerm = await apiGet('/v1/me/top/tracks?limit=50&time_range=short_term', access_token);
+    const mediumTerm = await apiGet('/v1/me/top/tracks?limit=50&time_range=medium_term', access_token);
+    const longTerm = await apiGet('/v1/me/top/tracks?limit=50&time_range=long_term', access_token);
+    
     const topArtists = await apiGet('/v1/me/top/artists?limit=50&time_range=medium_term', access_token);
     const playlists = await apiGet('/v1/me/playlists?limit=50', access_token);
     
+    chartData = {
+      short_term: shortTerm.items,
+      medium_term: mediumTerm.items,
+      long_term: longTerm.items
+    };
+    
     // Store both current (filtered) and all (unfiltered) data
     allData = {
-      topTracks: topTracks.items,
+      topTracks: mediumTerm.items,
       topArtists: topArtists.items,
       playlists: playlists.items
     };
     
     currentData = {
       me,
-      topTracks: topTracks.items,
+      topTracks: mediumTerm.items,
       topArtists: topArtists.items,
       playlists: playlists.items
     };
@@ -282,6 +306,7 @@ async function fetchAndRender(tokenObj){
     renderTopTracksView();
     renderTopArtistsView();
     renderPlaylistsView();
+    renderChart();
     
     hideNotice();
     showLoggedIn(true);
@@ -304,6 +329,12 @@ async function loadDemo(){
   const resp = await fetch('sample_data.json');
   const demo = await resp.json();
   
+  chartData = {
+    short_term: demo.top_tracks || [],
+    medium_term: demo.top_tracks || [],
+    long_term: demo.top_tracks || []
+  };
+  
   allData = {
     topTracks: demo.top_tracks || [],
     topArtists: demo.top_artists || [],
@@ -322,6 +353,7 @@ async function loadDemo(){
   renderTopTracksView();
   renderTopArtistsView();
   renderPlaylistsView();
+  renderChart();
   hideNotice();
 }
 
@@ -365,6 +397,7 @@ function switchView(view){
     'home': 'view-home',
     'top-tracks': 'view-top-tracks',
     'top-artists': 'view-top-artists',
+    'charts': 'view-charts',
     'playlists': 'view-playlists'
   };
   
@@ -508,6 +541,176 @@ function renderTracks(tracks, containerId){
     
     container.appendChild(row);
   }
+}
+
+/* ---------- Charts ---------- */
+function renderChart(){
+  const canvas = document.getElementById('listening-chart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = 300 * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  
+  const width = rect.width;
+  const height = 300;
+  const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  
+  // Get data based on period
+  let data = [];
+  let labels = [];
+  
+  if (currentPeriod === 'week') {
+    // Simulate weekly data from short term
+    const tracks = chartData.short_term.slice(0, 10);
+    labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    data = tracks.slice(0, 7).map((_, i) => Math.floor(Math.random() * 20) + 10);
+  } else if (currentPeriod === 'month') {
+    // Simulate monthly data
+    labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    data = [45, 52, 48, 60];
+  } else if (currentPeriod === '6months') {
+    labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    data = [180, 210, 195, 230, 215, 250];
+  } else if (currentPeriod === 'year') {
+    labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    data = [180, 210, 195, 230, 215, 250, 240, 270, 260, 290, 280, 310];
+  }
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, width, height);
+  
+  // Draw background
+  ctx.fillStyle = 'rgba(255,255,255,0.01)';
+  ctx.fillRect(padding.left, padding.top, chartWidth, chartHeight);
+  
+  // Calculate max value for scaling
+  const maxValue = Math.max(...data);
+  const scale = chartHeight / (maxValue * 1.1);
+  
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(padding.left + chartWidth, y);
+    ctx.stroke();
+  }
+  
+  // Draw axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, padding.top + chartHeight);
+  ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+  ctx.stroke();
+  
+  // Draw line chart
+  const stepX = chartWidth / (data.length - 1);
+  ctx.strokeStyle = '#1db954';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  
+  data.forEach((value, i) => {
+    const x = padding.left + i * stepX;
+    const y = padding.top + chartHeight - (value * scale);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.stroke();
+  
+  // Draw gradient fill under line
+  const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+  gradient.addColorStop(0, 'rgba(29, 185, 84, 0.3)');
+  gradient.addColorStop(1, 'rgba(29, 185, 84, 0.0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top + chartHeight);
+  data.forEach((value, i) => {
+    const x = padding.left + i * stepX;
+    const y = padding.top + chartHeight - (value * scale);
+    ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Draw points
+  ctx.fillStyle = '#1db954';
+  data.forEach((value, i) => {
+    const x = padding.left + i * stepX;
+    const y = padding.top + chartHeight - (value * scale);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  // Draw labels
+  ctx.fillStyle = '#b3b3b3';
+  ctx.font = '12px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  labels.forEach((label, i) => {
+    const x = padding.left + i * stepX;
+    ctx.fillText(label, x, height - 15);
+  });
+  
+  // Draw Y-axis labels
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const value = Math.round((maxValue * 1.1 / 4) * (4 - i));
+    const y = padding.top + (chartHeight / 4) * i + 4;
+    ctx.fillText(value.toString(), padding.left - 10, y);
+  }
+  
+  // Render top items list
+  renderChartTopItems();
+}
+
+function renderChartTopItems(){
+  const container = document.getElementById('chart-top-items');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  const tracks = currentPeriod === 'week' ? chartData.short_term.slice(0, 5) : 
+                 currentPeriod === 'month' ? chartData.short_term.slice(0, 5) :
+                 currentPeriod === '6months' ? chartData.medium_term.slice(0, 5) :
+                 chartData.long_term.slice(0, 5);
+  
+  tracks.forEach((track, i) => {
+    const item = el('div', {class: 'chart-item'});
+    item.appendChild(el('div', {class: 'rank'}, [document.createTextNode(`${i + 1}`)]));
+    
+    const img = track.album && track.album.images && track.album.images[0] ? track.album.images[0].url : '';
+    item.appendChild(el('img', {src: img, alt: track.name}));
+    
+    const meta = el('div', {class: 'meta'});
+    meta.appendChild(el('div', {class: 'name'}, [document.createTextNode(track.name)]));
+    const artists = (track.artists || []).map(a => a.name).join(', ');
+    meta.appendChild(el('div', {class: 'artist'}, [document.createTextNode(artists)]));
+    item.appendChild(meta);
+    
+    const trend = el('div', {class: i % 2 === 0 ? 'trend' : 'trend down'});
+    trend.appendChild(el('span', {}, [document.createTextNode(i % 2 === 0 ? '↑' : '↓')]));
+    item.appendChild(trend);
+    
+    if (track.external_urls && track.external_urls.spotify) {
+      item.addEventListener('click', () => {
+        window.open(track.external_urls.spotify, '_blank');
+      });
+    }
+    
+    container.appendChild(item);
+  });
 }
 
 // expose small helper for debugging

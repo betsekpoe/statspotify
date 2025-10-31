@@ -13,6 +13,7 @@
       <nav class="nav">
         <button class="nav-item" data-view="top-tracks">Top Tracks</button>
         <button class="nav-item" data-view="top-artists">Top Artists</button>
+        <button class="nav-item" data-view="charts">Charts</button>
         <button class="nav-item" data-view="playlists">Playlists</button>
       </nav>
       <div class="sidebar-bottom">
@@ -79,6 +80,32 @@
             <!-- playlist cards populated here -->
           </div>
         </section>
+
+        <!-- Charts View -->
+        <section class="view-section" id="view-charts">
+          <h1>Listening Charts</h1>
+          <p class="view-subtitle">Track your listening patterns over time</p>
+          
+          <div class="chart-container">
+            <div class="chart-header">
+              <h2 id="chart-title">Top Tracks Over Time</h2>
+              <div class="chart-controls">
+                <button class="chart-period-btn active" data-period="week">Week</button>
+                <button class="chart-period-btn" data-period="month">Month</button>
+                <button class="chart-period-btn" data-period="6months">6 Months</button>
+                <button class="chart-period-btn" data-period="year">Year</button>
+              </div>
+            </div>
+            <canvas id="listening-chart" width="800" height="300"></canvas>
+          </div>
+
+          <div class="chart-insights">
+            <h3>Your Top Tracks</h3>
+            <div id="chart-top-items" class="chart-items-list">
+              <!-- populated dynamically -->
+            </div>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -95,6 +122,10 @@
       <button class="mobile-nav-item" data-view="top-artists" title="Top Artists">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
         <span>Artists</span>
+      </button>
+      <button class="mobile-nav-item" data-view="charts" title="Charts">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>
+        <span>Charts</span>
       </button>
       <button class="mobile-nav-item" data-view="playlists" title="Playlists">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
