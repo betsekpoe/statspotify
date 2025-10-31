@@ -14,6 +14,7 @@ let allData = { topTracks: [], topArtists: [], playlists: [] }; // Store unfilte
 let chartData = { short_term: [], medium_term: [], long_term: [] }; // Store different time ranges
 let currentPeriod = 'week';
 let selectedTrackForChart = null; // Track selected for chart focus
+let isSearching = false; // Track if user is actively searching
 
 // Cache for track details
 let trackDetailsCache = {};
@@ -436,10 +437,15 @@ async function handleSearch(query){
   
   if (!query.trim()) {
     // Reset to all data and show cards
+    isSearching = false;
     currentData.topTracks = allData.topTracks;
     currentData.topArtists = allData.topArtists;
     currentData.playlists = allData.playlists;
     document.getElementById('cards').style.display = '';
+    
+    // Reset heading
+    const heading = document.getElementById('home-tracks-heading');
+    if (heading) heading.textContent = 'Recent Top Tracks';
     
     // Re-render current view
     renderHomeView();
@@ -448,6 +454,13 @@ async function handleSearch(query){
     renderPlaylistsView();
     return;
   }
+  
+  // Set searching state
+  isSearching = true;
+  
+  // Update heading
+  const heading = document.getElementById('home-tracks-heading');
+  if (heading) heading.textContent = `Searching for "${query}"...`;
   
   // Hide cards when searching
   const cardsEl = document.getElementById('cards');
@@ -553,7 +566,8 @@ function renderHomeView(){
   if (heroSection) heroSection.style.display = 'none';
   
   renderCards({topTracks: currentData.topTracks.slice(0,6), topArtists: currentData.topArtists.slice(0,6)});
-  renderTracks(currentData.topTracks.slice(0,10), 'home-top-tracks');
+  // Don't show rank numbers when searching
+  renderTracks(currentData.topTracks.slice(0,10), 'home-top-tracks', !isSearching);
 }
 
 function renderTopTracksView(){
@@ -666,7 +680,7 @@ function renderTopTracks(tracks){
   }
 }
 
-function renderTracks(tracks, containerId){
+function renderTracks(tracks, containerId, showRank = true){
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
@@ -674,10 +688,12 @@ function renderTracks(tracks, containerId){
     const t = tracks[i];
     const row = el('div',{class:'track'});
     
-    // Add rank number
-    const rank = el('div', {class: 'rank', style: 'min-width:32px;text-align:center;font-weight:700;color:#1db954;font-size:16px'});
-    rank.appendChild(document.createTextNode(`${i + 1}`));
-    row.appendChild(rank);
+    // Add rank number (conditionally)
+    if (showRank) {
+      const rank = el('div', {class: 'rank', style: 'min-width:32px;text-align:center;font-weight:700;color:#1db954;font-size:16px'});
+      rank.appendChild(document.createTextNode(`${i + 1}`));
+      row.appendChild(rank);
+    }
     
     const img = t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : (t.image || '');
     row.appendChild(el('img',{src:img,alt:t.name}));
