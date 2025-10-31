@@ -221,6 +221,11 @@ async function onLogout(){
   localStorage.removeItem('spotify_token');
   showLoggedIn(false);
   currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
+  
+  // Show hero section again
+  const heroSection = document.getElementById('hero-section');
+  if (heroSection) heroSection.style.display = '';
+  
   // clear UI
   document.getElementById('profile-area').innerHTML = '';
   document.getElementById('cards').innerHTML = '';
@@ -325,6 +330,10 @@ function switchView(view){
 }
 
 function renderHomeView(){
+  // Hide hero section when logged in
+  const heroSection = document.getElementById('hero-section');
+  if (heroSection) heroSection.style.display = 'none';
+  
   renderCards({topTracks: currentData.topTracks.slice(0,6), topArtists: currentData.topArtists.slice(0,6)});
   renderTracks(currentData.topTracks.slice(0,10), 'home-top-tracks');
 }
