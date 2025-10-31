@@ -15,6 +15,9 @@ let chartData = { short_term: [], medium_term: [], long_term: [] }; // Store dif
 let currentPeriod = 'week';
 let selectedTrackForChart = null; // Track selected for chart focus
 
+// Cache for track details
+let trackDetailsCache = {};
+
 document.addEventListener('DOMContentLoaded', () => {
   // Show loading spinner initially
   showLoading();
@@ -953,14 +956,23 @@ function clearTrackSelection() {
 
 /* ---------- Track Details View ---------- */
 async function showTrackDetails(track) {
-  showLoading();
+  // Don't show full-screen spinner, just show skeleton
   switchView('track-details');
+  showSkeletonLoader();
   
   try {
+    // Check cache first
+    if (trackDetailsCache[track.id]) {
+      console.log('Loading from cache:', track.id);
+      populateTrackDetails(trackDetailsCache[track.id]);
+      hideSkeletonLoader();
+      return;
+    }
+    
     const token = getStoredToken();
     if (!token) {
       showNotice('Please log in to view track details');
-      hideLoading();
+      hideSkeletonLoader();
       switchView('home');
       return;
     }
@@ -974,7 +986,7 @@ async function showTrackDetails(track) {
       if (err.message.includes('401') || err.message.includes('403')) {
         showNotice('Session expired. Please log in again.');
         localStorage.removeItem('spotify_token');
-        hideLoading();
+        hideSkeletonLoader();
         switchView('home');
         showLoggedIn(false);
         return;
@@ -982,124 +994,295 @@ async function showTrackDetails(track) {
       throw err;
     }
     
-    // Populate basic info
-    const img = trackInfo.album?.images?.[0]?.url || '';
-    document.getElementById('track-detail-image').src = img;
-    document.getElementById('track-detail-name').textContent = trackInfo.name;
-    document.getElementById('track-detail-artist').textContent = trackInfo.artists.map(a => a.name).join(', ');
-    document.getElementById('track-detail-album').textContent = trackInfo.album.name;
-    
-    // Duration
-    const minutes = Math.floor(trackInfo.duration_ms / 60000);
-    const seconds = ((trackInfo.duration_ms % 60000) / 1000).toFixed(0);
-    document.getElementById('track-detail-duration').textContent = `${minutes}:${seconds.padStart(2, '0')}`;
-    
-    // Release date
-    const releaseYear = trackInfo.album.release_date.split('-')[0];
-    document.getElementById('track-detail-release').textContent = releaseYear;
-    
-    // Popularity score
-    const popularity = trackInfo.popularity;
-    document.getElementById('track-popularity').textContent = popularity;
-    document.getElementById('popularity-fill').style.width = popularity + '%';
-    
-    let popularityDesc = '';
-    if (popularity >= 80) popularityDesc = '🔥 Extremely popular! This is a major hit.';
-    else if (popularity >= 60) popularityDesc = '⭐ Very popular track with strong listener engagement.';
-    else if (popularity >= 40) popularityDesc = '👍 Moderately popular with a solid fanbase.';
-    else if (popularity >= 20) popularityDesc = '🎵 Niche appeal, loved by dedicated fans.';
-    else popularityDesc = '💎 Hidden gem waiting to be discovered.';
-    document.getElementById('popularity-description').textContent = popularityDesc;
-    
     // Try to fetch audio features (may fail if user doesn't have proper permissions)
     let features = null;
     try {
       features = await apiGet(`/v1/audio-features/${track.id}`, token.access_token);
     } catch (err) {
       console.warn('Could not fetch audio features:', err.message);
-      // Show a message that audio features are unavailable
-      document.getElementById('mood-classification').textContent = 'Audio features unavailable for this track';
-      const container = document.getElementById('track-insights');
-      container.innerHTML = '<p style="color:var(--muted);text-align:center;">Audio analysis not available for this track. Some features require additional permissions.</p>';
-      
-      // Hide audio features that we can't display
-      const audioGrid = document.querySelector('.audio-features-grid');
-      if (audioGrid) audioGrid.style.opacity = '0.5';
-      
-      hideLoading();
-      return;
     }
     
-    // Audio features
-    if (features) {
-      // Reset audio grid opacity in case it was dimmed before
-      const audioGrid = document.querySelector('.audio-features-grid');
-      if (audioGrid) audioGrid.style.opacity = '1';
-      
-      // Tempo
-      const tempo = Math.round(features.tempo);
-      document.getElementById('track-tempo').textContent = `${tempo} BPM`;
-      const tempoPercent = Math.min(100, (tempo / 200) * 100);
-      document.getElementById('tempo-fill').style.width = tempoPercent + '%';
-      
-      // Key
-      const keys = ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B'];
-      const key = keys[features.key] || 'Unknown';
-      const mode = features.mode === 1 ? 'Major' : 'Minor';
-      document.getElementById('track-key').textContent = key;
-      document.getElementById('track-mode').textContent = mode;
-      
-      // Danceability
-      const danceability = Math.round(features.danceability * 100);
-      document.getElementById('track-danceability').textContent = `${danceability}%`;
-      document.getElementById('danceability-fill').style.width = danceability + '%';
-      
-      // Energy
-      const energy = Math.round(features.energy * 100);
-      document.getElementById('track-energy').textContent = `${energy}%`;
-      document.getElementById('energy-fill').style.width = energy + '%';
-      
-      // Valence (happiness)
-      const valence = Math.round(features.valence * 100);
-      document.getElementById('track-valence').textContent = `${valence}%`;
-      document.getElementById('valence-fill').style.width = valence + '%';
-      
-      // Speechiness
-      const speechiness = Math.round(features.speechiness * 100);
-      document.getElementById('track-speechiness').textContent = `${speechiness}%`;
-      document.getElementById('speechiness-fill').style.width = speechiness + '%';
-      
-      // Acousticness
-      const acousticness = Math.round(features.acousticness * 100);
-      document.getElementById('track-acousticness').textContent = `${acousticness}%`;
-      document.getElementById('acousticness-fill').style.width = acousticness + '%';
-      
-      // Liveness
-      const liveness = Math.round(features.liveness * 100);
-      document.getElementById('track-liveness').textContent = `${liveness}%`;
-      document.getElementById('liveness-fill').style.width = liveness + '%';
-      
-      // Mood classification
-      let mood = '';
-      if (energy > 60 && valence > 60) mood = '🎉 High-Energy Happy Song';
-      else if (energy > 60 && valence <= 60) mood = '⚡ High-Energy Sad Song';
-      else if (energy <= 60 && valence > 60) mood = '😌 Calm Happy Song';
-      else mood = '😔 Calm Sad Song';
-      document.getElementById('mood-classification').textContent = mood;
-      
-      // Draw mood quadrant
-      drawMoodQuadrant(valence / 100, energy / 100);
-      
-      // Generate insights
-      generateInsights(features, trackInfo);
-    }
+    // Cache the results
+    trackDetailsCache[track.id] = { trackInfo, features };
     
-    hideLoading();
+    // Populate the UI
+    populateTrackDetails({ trackInfo, features });
+    hideSkeletonLoader();
+    
   } catch (err) {
     console.error('Error fetching track details:', err);
     showNotice('Failed to load track details. Please try again later.');
-    hideLoading();
+    hideSkeletonLoader();
     switchView('home');
+  }
+}
+
+function showSkeletonLoader() {
+  const container = document.querySelector('.track-details-container');
+  if (!container) return;
+  
+  container.innerHTML = `
+    <div class="skeleton-header">
+      <div class="skeleton skeleton-album"></div>
+      <div class="skeleton-info">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-subtitle"></div>
+        <div class="skeleton skeleton-text"></div>
+      </div>
+    </div>
+    
+    <div class="skeleton skeleton-card" style="margin-bottom:24px"></div>
+    <div class="skeleton skeleton-card" style="margin-bottom:24px"></div>
+    
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:24px">
+      <div class="skeleton skeleton-feature"></div>
+      <div class="skeleton skeleton-feature"></div>
+      <div class="skeleton skeleton-feature"></div>
+      <div class="skeleton skeleton-feature"></div>
+      <div class="skeleton skeleton-feature"></div>
+      <div class="skeleton skeleton-feature"></div>
+      <div class="skeleton skeleton-feature"></div>
+      <div class="skeleton skeleton-feature"></div>
+    </div>
+  `;
+}
+
+function hideSkeletonLoader() {
+  // The skeleton will be replaced by actual content
+  const container = document.querySelector('.track-details-container');
+  if (container) {
+    container.classList.add('fade-in');
+  }
+}
+
+function populateTrackDetails({ trackInfo, features }) {
+  const container = document.querySelector('.track-details-container');
+  if (!container) return;
+  
+  // Build the complete HTML structure
+  const img = trackInfo.album?.images?.[0]?.url || '';
+  const artists = trackInfo.artists.map(a => a.name).join(', ');
+  const minutes = Math.floor(trackInfo.duration_ms / 60000);
+  const seconds = ((trackInfo.duration_ms % 60000) / 1000).toFixed(0);
+  const releaseYear = trackInfo.album.release_date.split('-')[0];
+  const popularity = trackInfo.popularity;
+  
+  let popularityDesc = '';
+  if (popularity >= 80) popularityDesc = '🔥 Extremely popular! This is a major hit.';
+  else if (popularity >= 60) popularityDesc = '⭐ Very popular track with strong listener engagement.';
+  else if (popularity >= 40) popularityDesc = '👍 Moderately popular with a solid fanbase.';
+  else if (popularity >= 20) popularityDesc = '🎵 Niche appeal, loved by dedicated fans.';
+  else popularityDesc = '💎 Hidden gem waiting to be discovered.';
+  
+  let audioFeaturesHTML = '';
+  let moodHTML = '';
+  let insightsHTML = '';
+  
+  if (features) {
+    const tempo = Math.round(features.tempo);
+    const tempoPercent = Math.min(100, (tempo / 200) * 100);
+    const keys = ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B'];
+    const key = keys[features.key] || 'Unknown';
+    const mode = features.mode === 1 ? 'Major' : 'Minor';
+    const danceability = Math.round(features.danceability * 100);
+    const energy = Math.round(features.energy * 100);
+    const valence = Math.round(features.valence * 100);
+    const speechiness = Math.round(features.speechiness * 100);
+    const acousticness = Math.round(features.acousticness * 100);
+    const liveness = Math.round(features.liveness * 100);
+    
+    let mood = '';
+    if (energy > 60 && valence > 60) mood = '🎉 High-Energy Happy Song';
+    else if (energy > 60 && valence <= 60) mood = '⚡ High-Energy Sad Song';
+    else if (energy <= 60 && valence > 60) mood = '😌 Calm Happy Song';
+    else mood = '😔 Calm Sad Song';
+    
+    // Generate insights
+    const insights = [];
+    if (features.tempo > 140) {
+      insights.push({ icon: '🏃', text: `At ${Math.round(features.tempo)} BPM, this is perfect for high-intensity workouts or running!` });
+    } else if (features.tempo < 80) {
+      insights.push({ icon: '🧘', text: `With a slow tempo of ${Math.round(features.tempo)} BPM, this is ideal for relaxation or meditation.` });
+    }
+    if (features.danceability > 0.8) {
+      insights.push({ icon: '💃', text: `This track is ${danceability}% danceable - it's impossible not to move to this!` });
+    }
+    if (features.energy > 0.7 && features.valence < 0.3) {
+      insights.push({ icon: '🎸', text: 'This is an energetic yet emotional track - perfect for cathartic moments.' });
+    } else if (features.energy < 0.3 && features.valence > 0.7) {
+      insights.push({ icon: '☀️', text: 'A calm but happy song - great for peaceful, content moments.' });
+    }
+    if (features.speechiness > 0.66) {
+      insights.push({ icon: '🎤', text: 'Heavy on the lyrics! This track is very speech-like, possibly rap or poetry.' });
+    } else if (features.speechiness > 0.33) {
+      insights.push({ icon: '🗣️', text: 'Good balance of vocals and instrumentals.' });
+    }
+    if (features.acousticness > 0.8) {
+      insights.push({ icon: '🎸', text: 'Highly acoustic - this has that raw, organic sound.' });
+    } else if (features.acousticness < 0.2) {
+      insights.push({ icon: '�', text: 'Heavily produced with electronic elements dominating the sound.' });
+    }
+    if (features.liveness > 0.8) {
+      insights.push({ icon: '🎪', text: 'Strong live performance vibes - might be recorded with an audience!' });
+    }
+    const keyName = keys[features.key];
+    if (keyName) {
+      insights.push({ icon: '🎼', text: `Written in ${keyName} ${mode} - ${mode === 'Minor' ? 'often associated with emotional or melancholic feelings' : 'typically bright and uplifting'}.` });
+    }
+    
+    insightsHTML = insights.map(ins => `
+      <div class="insight-item">
+        <div class="insight-icon">${ins.icon}</div>
+        <div class="insight-text">${ins.text}</div>
+      </div>
+    `).join('');
+    
+    if (!insightsHTML) {
+      insightsHTML = '<p style="color:var(--muted);text-align:center;">No special insights for this track.</p>';
+    }
+    
+    moodHTML = `
+      <div class="stat-card mood-card">
+        <h3>Mood & Energy</h3>
+        <div class="mood-quadrant">
+          <canvas id="mood-chart" width="300" height="300"></canvas>
+          <div class="mood-labels">
+            <span class="mood-label top">Energetic</span>
+            <span class="mood-label bottom">Calm</span>
+            <span class="mood-label left">Sad</span>
+            <span class="mood-label right">Happy</span>
+          </div>
+        </div>
+        <p class="mood-classification">${mood}</p>
+      </div>
+    `;
+    
+    audioFeaturesHTML = `
+      <div class="audio-features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🎵</div>
+          <div class="feature-label">Tempo</div>
+          <div class="feature-value">${tempo} BPM</div>
+          <div class="feature-bar">
+            <div class="feature-fill" style="width:${tempoPercent}%"></div>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎹</div>
+          <div class="feature-label">Key</div>
+          <div class="feature-value">${key}</div>
+          <div class="feature-description">${mode}</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💃</div>
+          <div class="feature-label">Danceability</div>
+          <div class="feature-value">${danceability}%</div>
+          <div class="feature-bar">
+            <div class="feature-fill" style="width:${danceability}%"></div>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-label">Energy</div>
+          <div class="feature-value">${energy}%</div>
+          <div class="feature-bar">
+            <div class="feature-fill" style="width:${energy}%"></div>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">😊</div>
+          <div class="feature-label">Valence</div>
+          <div class="feature-value">${valence}%</div>
+          <div class="feature-bar">
+            <div class="feature-fill" style="width:${valence}%"></div>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🗣️</div>
+          <div class="feature-label">Speechiness</div>
+          <div class="feature-value">${speechiness}%</div>
+          <div class="feature-bar">
+            <div class="feature-fill" style="width:${speechiness}%"></div>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎸</div>
+          <div class="feature-label">Acousticness</div>
+          <div class="feature-value">${acousticness}%</div>
+          <div class="feature-bar">
+            <div class="feature-fill" style="width:${acousticness}%"></div>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎤</div>
+          <div class="feature-label">Liveness</div>
+          <div class="feature-value">${liveness}%</div>
+          <div class="feature-bar">
+            <div class="feature-fill" style="width:${liveness}%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Store values for mood chart drawing
+    window.trackMoodData = { valence: valence / 100, energy: energy / 100 };
+  } else {
+    moodHTML = `
+      <div class="stat-card mood-card">
+        <h3>Mood & Energy</h3>
+        <p class="mood-classification" style="text-align:center;padding:40px">Audio features unavailable for this track</p>
+      </div>
+    `;
+    audioFeaturesHTML = `
+      <div class="audio-features-grid" style="opacity:0.5">
+        <p style="grid-column:1/-1;text-align:center;color:var(--muted)">Audio analysis not available for this track</p>
+      </div>
+    `;
+    insightsHTML = '<p style="color:var(--muted);text-align:center;">Audio analysis not available for this track. Some features require additional permissions.</p>';
+  }
+  
+  container.innerHTML = `
+    <div class="track-header">
+      <img src="${img}" alt="Album art" class="track-detail-album-art">
+      <div class="track-header-info">
+        <h1>${trackInfo.name}</h1>
+        <p class="track-detail-artist">${artists}</p>
+        <p class="track-detail-album">${trackInfo.album.name}</p>
+        <div class="track-basic-info">
+          <span>${minutes}:${seconds.padStart(2, '0')}</span>
+          <span class="divider">•</span>
+          <span>${releaseYear}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="stat-card popularity-card">
+      <div class="stat-header">
+        <h3>Popularity</h3>
+        <div class="stat-value-large">${popularity}</div>
+      </div>
+      <div class="popularity-bar">
+        <div class="popularity-fill" style="width:${popularity}%"></div>
+      </div>
+      <p class="stat-description">${popularityDesc}</p>
+    </div>
+    
+    ${moodHTML}
+    ${audioFeaturesHTML}
+    
+    <div class="stat-card insights-card">
+      <h3>Track Insights</h3>
+      <div class="insights-list">
+        ${insightsHTML}
+      </div>
+    </div>
+  `;
+  
+  // Draw mood chart if features are available
+  if (features && window.trackMoodData) {
+    setTimeout(() => {
+      drawMoodQuadrant(window.trackMoodData.valence, window.trackMoodData.energy);
+    }, 100);
   }
 }
 
@@ -1152,72 +1335,6 @@ function drawMoodQuadrant(valence, energy) {
   ctx.beginPath();
   ctx.arc(x, y, 16, 0, Math.PI * 2);
   ctx.fill();
-}
-
-function generateInsights(features, trackInfo) {
-  const insights = [];
-  
-  // Tempo insights
-  if (features.tempo > 140) {
-    insights.push({ icon: '🏃', text: `At ${Math.round(features.tempo)} BPM, this is perfect for high-intensity workouts or running!` });
-  } else if (features.tempo < 80) {
-    insights.push({ icon: '🧘', text: `With a slow tempo of ${Math.round(features.tempo)} BPM, this is ideal for relaxation or meditation.` });
-  }
-  
-  // Danceability
-  if (features.danceability > 0.8) {
-    insights.push({ icon: '💃', text: `This track is ${Math.round(features.danceability * 100)}% danceable - it's impossible not to move to this!` });
-  }
-  
-  // Energy vs Valence mismatch
-  if (features.energy > 0.7 && features.valence < 0.3) {
-    insights.push({ icon: '🎸', text: 'This is an energetic yet emotional track - perfect for cathartic moments.' });
-  } else if (features.energy < 0.3 && features.valence > 0.7) {
-    insights.push({ icon: '☀️', text: 'A calm but happy song - great for peaceful, content moments.' });
-  }
-  
-  // Speechiness
-  if (features.speechiness > 0.66) {
-    insights.push({ icon: '🎤', text: 'Heavy on the lyrics! This track is very speech-like, possibly rap or poetry.' });
-  } else if (features.speechiness > 0.33) {
-    insights.push({ icon: '🗣️', text: 'Good balance of vocals and instrumentals.' });
-  }
-  
-  // Acousticness
-  if (features.acousticness > 0.8) {
-    insights.push({ icon: '🎸', text: 'Highly acoustic - this has that raw, organic sound.' });
-  } else if (features.acousticness < 0.2) {
-    insights.push({ icon: '🎹', text: 'Heavily produced with electronic elements dominating the sound.' });
-  }
-  
-  // Liveness
-  if (features.liveness > 0.8) {
-    insights.push({ icon: '🎪', text: 'Strong live performance vibes - might be recorded with an audience!' });
-  }
-  
-  // Key insights
-  const keyModes = {
-    0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B'
-  };
-  if (keyModes[features.key]) {
-    const keyName = ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B'][features.key];
-    const mode = features.mode === 1 ? 'Major' : 'Minor';
-    insights.push({ icon: '🎼', text: `Written in ${keyName} ${mode} - ${mode === 'Minor' ? 'often associated with emotional or melancholic feelings' : 'typically bright and uplifting'}.` });
-  }
-  
-  // Render insights
-  const container = document.getElementById('track-insights');
-  container.innerHTML = '';
-  insights.forEach(insight => {
-    const item = el('div', { class: 'insight-item' });
-    item.appendChild(el('div', { class: 'insight-icon' }, [document.createTextNode(insight.icon)]));
-    item.appendChild(el('div', { class: 'insight-text' }, [document.createTextNode(insight.text)]));
-    container.appendChild(item);
-  });
-  
-  if (insights.length === 0) {
-    container.innerHTML = '<p style="color:var(--muted);text-align:center;">No special insights for this track.</p>';
-  }
 }
 
 // expose small helper for debugging
