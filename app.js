@@ -57,6 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
+  // Initialize UI state as logged out
+  showLoggedIn(false);
+  
   const params = new URLSearchParams(window.location.search);
   if (params.get('code')) {
     handleRedirect();
@@ -238,7 +241,7 @@ function showLoggedIn(is){
   } else {
     if (loginBtn) loginBtn.style.display = '';
     if (logoutBtn) logoutBtn.style.display = 'none';
-    if (mobileLoginBtn) mobileLoginBtn.style.display = '';
+    if (mobileLoginBtn) mobileLoginBtn.style.display = 'block';
   }
 }
 

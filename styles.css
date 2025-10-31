@@ -103,7 +103,7 @@ body{
   .app{padding-bottom:70px}
   .sidebar{display:none}
   .search input{min-width:120px}
-  .mobile-login{display:block}
+  .topbar{height:60px;padding:0 16px}
   .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid rgba(255,255,255,0.03);padding:8px;justify-content:space-around;z-index:1000}
   .mobile-nav-item{background:transparent;border:none;color:var(--muted);padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:11px;flex:1}
   .mobile-nav-item svg{width:20px;height:20px}
