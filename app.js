@@ -354,15 +354,19 @@ async function fetchAndRender(tokenObj){
   
   try{
     const access_token = tokenObj.access_token;
+    
+    // Fetch user profile first (fast)
     const me = await apiGet('/v1/me', access_token);
+    renderProfile(me);
     
-    // Fetch different time ranges for charts
-    const shortTerm = await apiGet('/v1/me/top/tracks?limit=50&time_range=short_term', access_token);
-    const mediumTerm = await apiGet('/v1/me/top/tracks?limit=50&time_range=medium_term', access_token);
-    const longTerm = await apiGet('/v1/me/top/tracks?limit=50&time_range=long_term', access_token);
-    
-    const topArtists = await apiGet('/v1/me/top/artists?limit=50&time_range=medium_term', access_token);
-    const playlists = await apiGet('/v1/me/playlists?limit=50', access_token);
+    // Fetch all data in parallel for better performance
+    const [shortTerm, mediumTerm, longTerm, topArtists, playlists] = await Promise.all([
+      apiGet('/v1/me/top/tracks?limit=50&time_range=short_term', access_token),
+      apiGet('/v1/me/top/tracks?limit=50&time_range=medium_term', access_token),
+      apiGet('/v1/me/top/tracks?limit=50&time_range=long_term', access_token),
+      apiGet('/v1/me/top/artists?limit=50&time_range=medium_term', access_token),
+      apiGet('/v1/me/playlists?limit=50', access_token)
+    ]);
     
     chartData = {
       short_term: shortTerm.items,
@@ -384,7 +388,7 @@ async function fetchAndRender(tokenObj){
       playlists: playlists.items
     };
     
-    renderProfile(me);
+    // Render views progressively
     renderHomeView();
     renderTopTracksView();
     renderTopArtistsView();
@@ -580,24 +584,34 @@ function renderTopTracksView(){
 function renderTopArtistsView(){
   const container = document.getElementById('top-artists');
   container.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+  
   for (const artist of currentData.topArtists){
     const card = el('div',{class:'artist-card'});
     const img = artist.images && artist.images[0] ? artist.images[0].url : 'https://via.placeholder.com/300?text=Artist';
-    card.appendChild(el('img',{src:img,alt:artist.name}));
+    const imgEl = el('img',{src:img,alt:artist.name});
+    imgEl.loading = 'lazy';
+    card.appendChild(imgEl);
     card.appendChild(el('div',{class:'name'},[document.createTextNode(artist.name)]));
     const followers = artist.followers ? `${(artist.followers.total / 1000).toFixed(1)}K followers` : '';
     card.appendChild(el('div',{class:'followers'},[document.createTextNode(followers)]));
-    container.appendChild(card);
+    fragment.appendChild(card);
   }
+  
+  container.appendChild(fragment);
 }
 
 function renderPlaylistsView(){
   const container = document.getElementById('playlists');
   container.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+  
   for (const playlist of currentData.playlists){
     const card = el('div',{class:'playlist-card'});
     const img = playlist.images && playlist.images[0] ? playlist.images[0].url : 'https://via.placeholder.com/300?text=Playlist';
-    card.appendChild(el('img',{src:img,alt:playlist.name}));
+    const imgEl = el('img',{src:img,alt:playlist.name});
+    imgEl.loading = 'lazy';
+    card.appendChild(imgEl);
     card.appendChild(el('div',{class:'name'},[document.createTextNode(playlist.name)]));
     const trackCount = `${playlist.tracks.total} tracks`;
     card.appendChild(el('div',{class:'track-count'},[document.createTextNode(trackCount)]));
@@ -610,8 +624,10 @@ function renderPlaylistsView(){
       });
     }
     
-    container.appendChild(card);
+    fragment.appendChild(card);
   }
+  
+  container.appendChild(fragment);
 }
 
 function renderProfile(me){
@@ -687,6 +703,10 @@ function renderTracks(tracks, containerId, showRank = true){
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
+  
+  // Use document fragment for better performance
+  const fragment = document.createDocumentFragment();
+  
   for (let i = 0; i < tracks.length; i++){
     const t = tracks[i];
     const row = el('div',{class:'track'});
@@ -699,7 +719,10 @@ function renderTracks(tracks, containerId, showRank = true){
     }
     
     const img = t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : (t.image || '');
-    row.appendChild(el('img',{src:img,alt:t.name}));
+    const imgEl = el('img',{src:img,alt:t.name});
+    imgEl.loading = 'lazy'; // Native lazy loading
+    row.appendChild(imgEl);
+    
     const meta = el('div',{class:'meta'});
     meta.appendChild(el('div',{class:'name'},[document.createTextNode(t.name)]));
     const artists = (t.artists || []).map(a=>a.name).join(', ') || t.artist || '';
@@ -726,8 +749,11 @@ function renderTracks(tracks, containerId, showRank = true){
     //   showTrackDetails(t);
     // });
     
-    container.appendChild(row);
+    fragment.appendChild(row);
   }
+  
+  // Append all at once for better performance
+  container.appendChild(fragment);
 }
 
 /* ---------- Charts ---------- */
