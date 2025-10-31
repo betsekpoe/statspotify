@@ -133,7 +133,7 @@ function renderTopTracks() {
   const html = currentData.topTracks.map((track, index) => {
     const img = track.album?.images?.[0]?.url || '';
     const artistNames = track.artists.map(a => a.name).join(', ');
-    const playCount = track.play_count || 0;
+    // const playCount = track.play_count || 0;
     return `
       <div class="track" data-track-id="${track.id}">
         ${img ? `<img src="${img}" alt="${track.name}" />` : '<div style="width:56px;height:56px;background:#333;border-radius:6px"></div>'}
@@ -143,7 +143,7 @@ function renderTopTracks() {
         </div>
         <div class="track-rank" style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px">
           <span style="font-weight:700;color:#1db954">#${index + 1}</span>
-          <span style="font-size:12px;color:#b3b3b3">${playCount} plays</span>
+          <!-- <span style="font-size:12px;color:#b3b3b3">${playCount} plays</span> -->
         </div>
       </div>
     `;
@@ -153,7 +153,7 @@ function renderTopTracks() {
   homeContainer.innerHTML = currentData.topTracks.slice(0, 5).map((track, index) => {
     const img = track.album?.images?.[0]?.url || '';
     const artistNames = track.artists.map(a => a.name).join(', ');
-    const playCount = track.play_count || 0;
+    // const playCount = track.play_count || 0;
     return `
       <div class="track" data-track-id="${track.id}">
         ${img ? `<img src="${img}" alt="${track.name}" />` : '<div style="width:56px;height:56px;background:#333;border-radius:6px"></div>'}
@@ -163,7 +163,7 @@ function renderTopTracks() {
         </div>
         <div class="track-rank" style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px">
           <span style="font-weight:700;color:#1db954">#${index + 1}</span>
-          <span style="font-size:12px;color:#b3b3b3">${playCount} plays</span>
+          <!-- <span style="font-size:12px;color:#b3b3b3">${playCount} plays</span> -->
         </div>
       </div>
     `;
@@ -393,7 +393,7 @@ function renderChartTopItems() {
           <div class="artist">${artistNames}</div>
         </div>
         <div class="trend">
-          <span>${playCount} plays</span>
+          <!-- <span>${playCount} plays</span> -->
         </div>
       </div>
       <button class="btn" onclick="clearTrackSelection()" style="margin-top:12px;width:100%">Show All Tracks</button>
@@ -415,7 +415,7 @@ function renderChartTopItems() {
             <div class="artist">${artistNames}</div>
           </div>
           <div class="trend ${trend}">
-            <span>${playCount} plays</span>
+            <!-- <span>${playCount} plays</span> -->
           </div>
         </div>
       `;

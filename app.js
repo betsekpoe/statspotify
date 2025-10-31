@@ -540,8 +540,8 @@ function renderTopTracks(tracks){
     rankDiv.appendChild(el('span', {style: 'font-weight:700;color:#1db954'}, [document.createTextNode(`#${i + 1}`)]));
     
     // Mock play count (in real app, would come from API)
-    const playCount = t.play_count || Math.floor(Math.random() * 200) + 50;
-    rankDiv.appendChild(el('span', {style: 'font-size:12px;color:#b3b3b3'}, [document.createTextNode(`${playCount} plays`)]));
+    // const playCount = t.play_count || Math.floor(Math.random() * 200) + 50;
+    // rankDiv.appendChild(el('span', {style: 'font-size:12px;color:#b3b3b3'}, [document.createTextNode(`${playCount} plays`)]));
     row.appendChild(rankDiv);
     
     container.appendChild(row);
@@ -564,10 +564,10 @@ function renderTracks(tracks, containerId){
     row.appendChild(meta);
     
     // Add play count
-    const playCount = t.play_count || Math.floor(Math.random() * 200) + 50;
-    const countDiv = el('div', {style: 'margin-left:auto;font-size:12px;color:#b3b3b3'});
-    countDiv.appendChild(document.createTextNode(`${playCount} plays`));
-    row.appendChild(countDiv);
+    // const playCount = t.play_count || Math.floor(Math.random() * 200) + 50;
+    // const countDiv = el('div', {style: 'margin-left:auto;font-size:12px;color:#b3b3b3'});
+    // countDiv.appendChild(document.createTextNode(`${playCount} plays`));
+    // row.appendChild(countDiv);
     
     // Make track clickable to open in Spotify
     if (t.external_urls && t.external_urls.spotify) {
