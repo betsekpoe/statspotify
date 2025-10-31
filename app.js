@@ -59,6 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
+  // Setup back button from track details
+  document.getElementById('back-from-track').addEventListener('click', () => {
+    switchView('home');
+  });
+  
   // Initialize UI state as logged out
   showLoggedIn(false);
   
@@ -421,13 +426,33 @@ async function apiGet(path, access_token){
 }
 
 /* ---------- Search ---------- */
-function handleSearch(query){
+let searchTimeout = null;
+
+async function handleSearch(query){
+  clearTimeout(searchTimeout);
+  
   if (!query.trim()) {
-    // Reset to all data
+    // Reset to all data and show cards
     currentData.topTracks = allData.topTracks;
     currentData.topArtists = allData.topArtists;
     currentData.playlists = allData.playlists;
-  } else {
+    document.getElementById('cards').style.display = '';
+    
+    // Re-render current view
+    renderHomeView();
+    renderTopTracksView();
+    renderTopArtistsView();
+    renderPlaylistsView();
+    return;
+  }
+  
+  // Hide cards when searching
+  const cardsEl = document.getElementById('cards');
+  if (cardsEl) cardsEl.style.display = 'none';
+  
+  const token = getStoredToken();
+  if (!token) {
+    // No token, just filter local data
     const lowerQuery = query.toLowerCase();
     currentData.topTracks = allData.topTracks.filter(t => 
       t.name.toLowerCase().includes(lowerQuery) || 
@@ -439,13 +464,42 @@ function handleSearch(query){
     currentData.playlists = allData.playlists.filter(p => 
       p.name.toLowerCase().includes(lowerQuery)
     );
+    
+    renderHomeView();
+    renderTopTracksView();
+    renderTopArtistsView();
+    renderPlaylistsView();
+    return;
   }
   
-  // Re-render current view
-  renderHomeView();
-  renderTopTracksView();
-  renderTopArtistsView();
-  renderPlaylistsView();
+  // Debounce Spotify API search
+  searchTimeout = setTimeout(async () => {
+    try {
+      const results = await apiGet(`/v1/search?q=${encodeURIComponent(query)}&type=track,artist&limit=20`, token.access_token);
+      
+      currentData.topTracks = results.tracks ? results.tracks.items : [];
+      currentData.topArtists = results.artists ? results.artists.items : [];
+      
+      renderHomeView();
+      renderTopTracksView();
+      renderTopArtistsView();
+    } catch (err) {
+      console.error('Search error:', err);
+      // Fallback to local filtering
+      const lowerQuery = query.toLowerCase();
+      currentData.topTracks = allData.topTracks.filter(t => 
+        t.name.toLowerCase().includes(lowerQuery) || 
+        (t.artists && t.artists.some(a => a.name.toLowerCase().includes(lowerQuery)))
+      );
+      currentData.topArtists = allData.topArtists.filter(a => 
+        a.name.toLowerCase().includes(lowerQuery)
+      );
+      
+      renderHomeView();
+      renderTopTracksView();
+      renderTopArtistsView();
+    }
+  }, 300);
 }
 
 /* ---------- Render helpers ---------- */
@@ -630,12 +684,11 @@ function renderTracks(tracks, containerId){
     // countDiv.appendChild(document.createTextNode(`${playCount} plays`));
     // row.appendChild(countDiv);
     
-    // Make track clickable to open in Spotify
-    if (t.external_urls && t.external_urls.spotify) {
-      row.addEventListener('click', () => {
-        window.open(t.external_urls.spotify, '_blank');
-      });
-    }
+    // Make track clickable to show details
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => {
+      showTrackDetails(t);
+    });
     
     container.appendChild(row);
   }
@@ -898,5 +951,237 @@ function clearTrackSelection() {
   renderChart();
 }
 
+/* ---------- Track Details View ---------- */
+async function showTrackDetails(track) {
+  showLoading();
+  switchView('track-details');
+  
+  try {
+    const token = getStoredToken();
+    if (!token) {
+      showNotice('Please log in to view track details');
+      hideLoading();
+      return;
+    }
+    
+    // Fetch audio features
+    const features = await apiGet(`/v1/audio-features/${track.id}`, token.access_token);
+    const trackInfo = await apiGet(`/v1/tracks/${track.id}`, token.access_token);
+    
+    // Populate basic info
+    const img = trackInfo.album?.images?.[0]?.url || '';
+    document.getElementById('track-detail-image').src = img;
+    document.getElementById('track-detail-name').textContent = trackInfo.name;
+    document.getElementById('track-detail-artist').textContent = trackInfo.artists.map(a => a.name).join(', ');
+    document.getElementById('track-detail-album').textContent = trackInfo.album.name;
+    
+    // Duration
+    const minutes = Math.floor(trackInfo.duration_ms / 60000);
+    const seconds = ((trackInfo.duration_ms % 60000) / 1000).toFixed(0);
+    document.getElementById('track-detail-duration').textContent = `${minutes}:${seconds.padStart(2, '0')}`;
+    
+    // Release date
+    const releaseYear = trackInfo.album.release_date.split('-')[0];
+    document.getElementById('track-detail-release').textContent = releaseYear;
+    
+    // Popularity score
+    const popularity = trackInfo.popularity;
+    document.getElementById('track-popularity').textContent = popularity;
+    document.getElementById('popularity-fill').style.width = popularity + '%';
+    
+    let popularityDesc = '';
+    if (popularity >= 80) popularityDesc = '🔥 Extremely popular! This is a major hit.';
+    else if (popularity >= 60) popularityDesc = '⭐ Very popular track with strong listener engagement.';
+    else if (popularity >= 40) popularityDesc = '👍 Moderately popular with a solid fanbase.';
+    else if (popularity >= 20) popularityDesc = '🎵 Niche appeal, loved by dedicated fans.';
+    else popularityDesc = '💎 Hidden gem waiting to be discovered.';
+    document.getElementById('popularity-description').textContent = popularityDesc;
+    
+    // Audio features
+    if (features) {
+      // Tempo
+      const tempo = Math.round(features.tempo);
+      document.getElementById('track-tempo').textContent = `${tempo} BPM`;
+      const tempoPercent = Math.min(100, (tempo / 200) * 100);
+      document.getElementById('tempo-fill').style.width = tempoPercent + '%';
+      
+      // Key
+      const keys = ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B'];
+      const key = keys[features.key] || 'Unknown';
+      const mode = features.mode === 1 ? 'Major' : 'Minor';
+      document.getElementById('track-key').textContent = key;
+      document.getElementById('track-mode').textContent = mode;
+      
+      // Danceability
+      const danceability = Math.round(features.danceability * 100);
+      document.getElementById('track-danceability').textContent = `${danceability}%`;
+      document.getElementById('danceability-fill').style.width = danceability + '%';
+      
+      // Energy
+      const energy = Math.round(features.energy * 100);
+      document.getElementById('track-energy').textContent = `${energy}%`;
+      document.getElementById('energy-fill').style.width = energy + '%';
+      
+      // Valence (happiness)
+      const valence = Math.round(features.valence * 100);
+      document.getElementById('track-valence').textContent = `${valence}%`;
+      document.getElementById('valence-fill').style.width = valence + '%';
+      
+      // Speechiness
+      const speechiness = Math.round(features.speechiness * 100);
+      document.getElementById('track-speechiness').textContent = `${speechiness}%`;
+      document.getElementById('speechiness-fill').style.width = speechiness + '%';
+      
+      // Acousticness
+      const acousticness = Math.round(features.acousticness * 100);
+      document.getElementById('track-acousticness').textContent = `${acousticness}%`;
+      document.getElementById('acousticness-fill').style.width = acousticness + '%';
+      
+      // Liveness
+      const liveness = Math.round(features.liveness * 100);
+      document.getElementById('track-liveness').textContent = `${liveness}%`;
+      document.getElementById('liveness-fill').style.width = liveness + '%';
+      
+      // Mood classification
+      let mood = '';
+      if (energy > 60 && valence > 60) mood = '🎉 High-Energy Happy Song';
+      else if (energy > 60 && valence <= 60) mood = '⚡ High-Energy Sad Song';
+      else if (energy <= 60 && valence > 60) mood = '😌 Calm Happy Song';
+      else mood = '😔 Calm Sad Song';
+      document.getElementById('mood-classification').textContent = mood;
+      
+      // Draw mood quadrant
+      drawMoodQuadrant(valence / 100, energy / 100);
+      
+      // Generate insights
+      generateInsights(features, trackInfo);
+    }
+    
+    hideLoading();
+  } catch (err) {
+    console.error('Error fetching track details:', err);
+    showNotice('Failed to load track details. Please try again.');
+    hideLoading();
+    switchView('home');
+  }
+}
+
+function drawMoodQuadrant(valence, energy) {
+  const canvas = document.getElementById('mood-chart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const size = 300;
+  ctx.clearRect(0, 0, size, size);
+  
+  // Draw quadrant lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(size / 2, 0);
+  ctx.lineTo(size / 2, size);
+  ctx.moveTo(0, size / 2);
+  ctx.lineTo(size, size / 2);
+  ctx.stroke();
+  
+  // Draw background quadrants
+  ctx.fillStyle = 'rgba(29,185,84,0.05)';
+  ctx.fillRect(size / 2, 0, size / 2, size / 2); // Happy + Energetic
+  
+  // Calculate position (valence = x, energy = y, but inverted)
+  const x = valence * size;
+  const y = (1 - energy) * size;
+  
+  // Draw connecting lines to axes
+  ctx.strokeStyle = 'rgba(29,185,84,0.3)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, size / 2);
+  ctx.moveTo(x, y);
+  ctx.lineTo(size / 2, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // Draw point
+  ctx.fillStyle = '#1db954';
+  ctx.beginPath();
+  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Draw glow
+  ctx.fillStyle = 'rgba(29,185,84,0.3)';
+  ctx.beginPath();
+  ctx.arc(x, y, 16, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function generateInsights(features, trackInfo) {
+  const insights = [];
+  
+  // Tempo insights
+  if (features.tempo > 140) {
+    insights.push({ icon: '🏃', text: `At ${Math.round(features.tempo)} BPM, this is perfect for high-intensity workouts or running!` });
+  } else if (features.tempo < 80) {
+    insights.push({ icon: '🧘', text: `With a slow tempo of ${Math.round(features.tempo)} BPM, this is ideal for relaxation or meditation.` });
+  }
+  
+  // Danceability
+  if (features.danceability > 0.8) {
+    insights.push({ icon: '💃', text: `This track is ${Math.round(features.danceability * 100)}% danceable - it's impossible not to move to this!` });
+  }
+  
+  // Energy vs Valence mismatch
+  if (features.energy > 0.7 && features.valence < 0.3) {
+    insights.push({ icon: '🎸', text: 'This is an energetic yet emotional track - perfect for cathartic moments.' });
+  } else if (features.energy < 0.3 && features.valence > 0.7) {
+    insights.push({ icon: '☀️', text: 'A calm but happy song - great for peaceful, content moments.' });
+  }
+  
+  // Speechiness
+  if (features.speechiness > 0.66) {
+    insights.push({ icon: '🎤', text: 'Heavy on the lyrics! This track is very speech-like, possibly rap or poetry.' });
+  } else if (features.speechiness > 0.33) {
+    insights.push({ icon: '🗣️', text: 'Good balance of vocals and instrumentals.' });
+  }
+  
+  // Acousticness
+  if (features.acousticness > 0.8) {
+    insights.push({ icon: '🎸', text: 'Highly acoustic - this has that raw, organic sound.' });
+  } else if (features.acousticness < 0.2) {
+    insights.push({ icon: '🎹', text: 'Heavily produced with electronic elements dominating the sound.' });
+  }
+  
+  // Liveness
+  if (features.liveness > 0.8) {
+    insights.push({ icon: '🎪', text: 'Strong live performance vibes - might be recorded with an audience!' });
+  }
+  
+  // Key insights
+  const keyModes = {
+    0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B'
+  };
+  if (keyModes[features.key]) {
+    const keyName = ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B'][features.key];
+    const mode = features.mode === 1 ? 'Major' : 'Minor';
+    insights.push({ icon: '🎼', text: `Written in ${keyName} ${mode} - ${mode === 'Minor' ? 'often associated with emotional or melancholic feelings' : 'typically bright and uplifting'}.` });
+  }
+  
+  // Render insights
+  const container = document.getElementById('track-insights');
+  container.innerHTML = '';
+  insights.forEach(insight => {
+    const item = el('div', { class: 'insight-item' });
+    item.appendChild(el('div', { class: 'insight-icon' }, [document.createTextNode(insight.icon)]));
+    item.appendChild(el('div', { class: 'insight-text' }, [document.createTextNode(insight.text)]));
+    container.appendChild(item);
+  });
+  
+  if (insights.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);text-align:center;">No special insights for this track.</p>';
+  }
+}
+
 // expose small helper for debugging
-window.statspotify = {onLoginClicked, onLogout, attemptRefresh, switchView};
+window.statspotify = {onLoginClicked, onLogout, attemptRefresh, switchView, showTrackDetails};
