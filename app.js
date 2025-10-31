@@ -673,6 +673,12 @@ function renderTracks(tracks, containerId){
   for (let i = 0; i < tracks.length; i++){
     const t = tracks[i];
     const row = el('div',{class:'track'});
+    
+    // Add rank number
+    const rank = el('div', {class: 'rank', style: 'min-width:32px;text-align:center;font-weight:700;color:#1db954;font-size:16px'});
+    rank.appendChild(document.createTextNode(`${i + 1}`));
+    row.appendChild(rank);
+    
     const img = t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : (t.image || '');
     row.appendChild(el('img',{src:img,alt:t.name}));
     const meta = el('div',{class:'meta'});
