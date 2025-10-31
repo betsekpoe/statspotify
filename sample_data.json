@@ -1,0 +1,24 @@
+{
+  "profile": {
+    "display_name": "Demo Listener",
+    "images": [{"url":"https://via.placeholder.com/80x80?text=Me"}]
+  },
+  "top_tracks": [
+    {"name":"Sunset Drive","artists":[{"name":"Neon Waves"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+1"}]},"image":"https://via.placeholder.com/56?text=1"},
+    {"name":"City Lights","artists":[{"name":"The NightShift"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+2"}]},"image":"https://via.placeholder.com/56?text=2"},
+    {"name":"Midnight Groove","artists":[{"name":"Blue Echo"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+3"}]},"image":"https://via.placeholder.com/56?text=3"},
+    {"name":"Paper Planes","artists":[{"name":"Stereo Heart"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+4"}]},"image":"https://via.placeholder.com/56?text=4"},
+    {"name":"Afterglow","artists":[{"name":"Lumen"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+5"}]},"image":"https://via.placeholder.com/56?text=5"},
+    {"name":"Golden Hour","artists":[{"name":"Hush"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+6"}]},"image":"https://via.placeholder.com/56?text=6"},
+    {"name":"Starlit","artists":[{"name":"Midori"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+7"}]},"image":"https://via.placeholder.com/56?text=7"},
+    {"name":"Paper Moon","artists":[{"name":"Moonrise"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+8"}]},"image":"https://via.placeholder.com/56?text=8"}
+  ],
+  "top_artists": [
+    {"name":"Neon Waves","images":[{"url":"https://via.placeholder.com/640?text=Artist+1"}]},
+    {"name":"The NightShift","images":[{"url":"https://via.placeholder.com/640?text=Artist+2"}]},
+    {"name":"Blue Echo","images":[{"url":"https://via.placeholder.com/640?text=Artist+3"}]},
+    {"name":"Stereo Heart","images":[{"url":"https://via.placeholder.com/640?text=Artist+4"}]},
+    {"name":"Lumen","images":[{"url":"https://via.placeholder.com/640?text=Artist+5"}]},
+    {"name":"Hush","images":[{"url":"https://via.placeholder.com/640?text=Artist+6"}]}
+  ]
+}

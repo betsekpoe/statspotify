@@ -1,0 +1,6 @@
+# .gitignore (create file)
+node_modules/
+.env
+.env.local
+.DS_Store
+.vscode/

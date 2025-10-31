@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StatSpotify — Your Spotify stats</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">StatSpotify</div>
+      <nav class="nav">
+        <button class="nav-item active">Home</button>
+        <button class="nav-item">Top Tracks</button>
+        <button class="nav-item">Top Artists</button>
+        <button class="nav-item">Playlists</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button id="login-btn" class="btn primary">Connect Spotify</button>
+        <button id="demo-btn" class="btn">Use demo data</button>
+      </div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="search">
+          <input id="search-input" placeholder="Search your stats (demo)" />
+        </div>
+        <div class="profile" id="profile-area">
+          <!-- profile inserted here -->
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="hero">
+          <h1>Your Spotify stats, beautifully visualized</h1>
+          <p>Connect with Spotify to view your top tracks, artists and listening insights.</p>
+        </section>
+
+        <section class="cards" id="cards">
+          <!-- dynamic cards: top tracks / artists / albums -->
+        </section>
+
+        <section class="list-section">
+          <h2>Top Tracks</h2>
+          <div id="top-tracks" class="track-list">
+            <!-- track rows populated here -->
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
