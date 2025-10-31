@@ -71,8 +71,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (token) {
       fetchAndRender(token);
     } else {
-      // try server-side refresh using cookie
-      attemptRefresh();
+      // Only attempt server-side refresh if we're in production (has /api endpoints)
+      // For new users or local dev, just hide loading and show login screen
+      const isProduction = window.location.hostname !== 'localhost' && 
+                          window.location.hostname !== '127.0.0.1' &&
+                          !window.location.port;
+      
+      if (isProduction) {
+        attemptRefresh();
+      } else {
+        hideLoading();
+        hideNotice();
+      }
     }
   }
 });
@@ -143,33 +153,71 @@ async function handleRedirect(){
   const verifier = localStorage.getItem('pkce_verifier');
   if (!verifier) {
     showNotice('Missing PKCE verifier. Try logging in again.');
+    hideLoading();
     return;
   }
-  showNotice('Exchanging code for token via server...');
+  showNotice('Exchanging code for token...');
   try {
-    // Prefer server-side exchange to avoid CORS and to keep client secret safe.
+    // Try server-side exchange first (for production)
     const resp = await fetch('/api/exchange', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, code_verifier: verifier, redirect_uri: REDIRECT_URI })
     });
-    if (!resp.ok) {
-      const t = await resp.text();
-      showNotice('Token exchange failed on server. See console for details.');
-      console.error('server exchange error', resp.status, t);
+    
+    // If server endpoint exists and returns success
+    if (resp.ok) {
+      const tokenObj = await resp.json();
+      if (tokenObj.error) {
+        showNotice('Token exchange returned an error: ' + (tokenObj.error_description || tokenObj.error));
+        console.error('token error', tokenObj);
+        hideLoading();
+        return;
+      }
+      storeToken(tokenObj);
+      fetchAndRender(tokenObj);
       return;
     }
-    const tokenObj = await resp.json();
+    
+    // Fallback: Direct client-side exchange (for local development)
+    console.log('Server exchange not available, using direct exchange (local dev)');
+    showNotice('Exchanging code directly (local mode)...');
+    
+    const directResp = await fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: REDIRECT_URI,
+        code_verifier: verifier
+      })
+    });
+    
+    if (!directResp.ok) {
+      const errorText = await directResp.text();
+      showNotice('Token exchange failed. Try again.');
+      console.error('Direct token exchange error', directResp.status, errorText);
+      hideLoading();
+      return;
+    }
+    
+    const tokenObj = await directResp.json();
     if (tokenObj.error) {
       showNotice('Token exchange returned an error: ' + (tokenObj.error_description || tokenObj.error));
       console.error('token error', tokenObj);
+      hideLoading();
       return;
     }
+    
     storeToken(tokenObj);
     fetchAndRender(tokenObj);
+    
   } catch (err) {
     console.error(err);
-    showNotice('Token exchange failed (network/server). See README for serverless exchange guidance.');
+    showNotice('Token exchange failed. Check console for details.');
+    hideLoading();
   }
 }
 
@@ -208,11 +256,21 @@ function hideNotice(){
 }
 
 async function attemptRefresh(){
-  showNotice('Checking session...');
+  // Don't show "Checking session..." message to avoid confusion for new users
   try{
-    const resp = await fetch('/api/refresh', { method: 'POST' });
+    // Add a timeout to prevent infinite loading
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+    
+    const resp = await fetch('/api/refresh', { 
+      method: 'POST',
+      signal: controller.signal 
+    });
+    clearTimeout(timeoutId);
+    
     if (!resp.ok) {
-      // no active session or refresh failed
+      // no active session or refresh failed (expected for new users)
+      console.log('No server session available');
       hideNotice();
       hideLoading();
       return null;
@@ -224,13 +282,20 @@ async function attemptRefresh(){
       // show logout button
       showLoggedIn(true);
       return tokenObj;
+    } else {
+      hideNotice();
+      hideLoading();
     }
   }catch(err){
-    console.error('refresh attempt failed', err);
+    // Expected error for new users or timeout
+    if (err.name === 'AbortError') {
+      console.log('Session check timeout - no active session');
+    } else {
+      console.log('Server refresh not available');
+    }
     hideNotice();
     hideLoading();
   }
-  hideLoading();
   return null;
 }
 
@@ -276,6 +341,8 @@ async function onLogout(){
 /* ---------- Fetch & render ---------- */
 async function fetchAndRender(tokenObj){
   showNotice('Loading your Spotify stats...');
+  showLoading();
+  
   try{
     const access_token = tokenObj.access_token;
     const me = await apiGet('/v1/me', access_token);
@@ -319,15 +386,38 @@ async function fetchAndRender(tokenObj){
     hideLoading();
     showLoggedIn(true);
   }catch(err){
-    console.error(err);
-    showNotice('Failed to fetch Spotify API data. Token may be invalid or network restricted.');
+    console.error('Fetch error:', err);
+    hideLoading();
+    showNotice('Failed to fetch Spotify data. Please try logging in again.');
+    showLoggedIn(false);
+    // Clear invalid token
+    localStorage.removeItem('spotify_token');
   }
 }
 
 async function apiGet(path, access_token){
-  const resp = await fetch('https://api.spotify.com' + path, {headers:{Authorization:'Bearer '+access_token}});
-  if (!resp.ok) throw new Error('API error '+resp.status);
-  return await resp.json();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  
+  try {
+    const resp = await fetch('https://api.spotify.com' + path, {
+      headers: {Authorization: 'Bearer ' + access_token},
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`API error ${resp.status}: ${errorText}`);
+    }
+    return await resp.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timeout - Spotify API is not responding');
+    }
+    throw err;
+  }
 }
 
 /* ---------- Search ---------- */
@@ -454,10 +544,18 @@ function renderProfile(me){
   const area = document.getElementById('profile-area');
   area.innerHTML = '';
   if (!me) return;
-  const img = me.images && me.images[0] ? el('img',{src:me.images[0].url,style:'width:40px;height:40px;border-radius:50%'}): el('div',{style:'width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06)'});
-  const name = el('div',{},[el('div',{class:'small'},me.display_name || me.name || 'You')]);
-  area.appendChild(img);
-  area.appendChild(name);
+  
+  if (me.images && me.images[0]) {
+    // User has a profile picture
+    const img = el('img', {src: me.images[0].url});
+    area.appendChild(img);
+  } else {
+    // No profile picture - show first letter of name
+    const displayName = me.display_name || me.name || 'User';
+    const initial = displayName.charAt(0).toUpperCase();
+    const initialDiv = el('div', {class: 'profile-initial'}, [document.createTextNode(initial)]);
+    area.appendChild(initialDiv);
+  }
 }
 
 function renderCards({topTracks = [], topArtists = []}){
