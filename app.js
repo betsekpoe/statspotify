@@ -14,8 +14,11 @@ let currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
 let allData = { topTracks: [], topArtists: [], playlists: [] }; // Store unfiltered data for search
 let chartData = { short_term: [], medium_term: [], long_term: [] }; // Store different time ranges
 let currentPeriod = 'week';
+let selectedTrackForChart = null; // Track selected for chart focus
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Show loading spinner initially
+  showLoading();
   document.getElementById('login-btn').addEventListener('click', onLoginClicked);
   document.getElementById('logout-btn').addEventListener('click', onLogout);
   document.getElementById('brand-btn').addEventListener('click', () => switchView('home'));
@@ -212,6 +215,7 @@ async function attemptRefresh(){
     if (!resp.ok) {
       // no active session or refresh failed
       hideNotice();
+      hideLoading();
       return null;
     }
     const tokenObj = await resp.json();
@@ -225,7 +229,9 @@ async function attemptRefresh(){
   }catch(err){
     console.error('refresh attempt failed', err);
     hideNotice();
+    hideLoading();
   }
+  hideLoading();
   return null;
 }
 
@@ -312,6 +318,7 @@ async function fetchAndRender(tokenObj){
     renderChart();
     
     hideNotice();
+    hideLoading();
     showLoggedIn(true);
   }catch(err){
     console.error(err);
@@ -419,6 +426,15 @@ function switchView(view){
     const mobileNavItem = document.querySelector(`.mobile-nav-item[data-view="home"]`);
     if (mobileNavItem) mobileNavItem.classList.add('active');
   }
+  
+  // If switching to charts view, auto-load weekly stats
+  if (view === 'charts') {
+    currentPeriod = 'week';
+    document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
+    const weekBtn = document.querySelector('.chart-period-btn[data-period="week"]');
+    if (weekBtn) weekBtn.classList.add('active');
+    renderChart();
+  }
 }
 
 function renderHomeView(){
@@ -508,7 +524,8 @@ function card(title, value, img){
 function renderTopTracks(tracks){
   const container = document.getElementById('top-tracks');
   container.innerHTML = '';
-  for (const t of tracks){
+  for (let i = 0; i < tracks.length; i++){
+    const t = tracks[i];
     const row = el('div',{class:'track'});
     const img = t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : (t.image || '');
     row.appendChild(el('img',{src:img,alt:t.name}));
@@ -517,6 +534,16 @@ function renderTopTracks(tracks){
     const artists = (t.artists || t.artists || []).map(a=>a.name).join(', ') || t.artist || '';
     meta.appendChild(el('div',{class:'artist'},[document.createTextNode(artists)]));
     row.appendChild(meta);
+    
+    // Add play count and rank
+    const rankDiv = el('div', {class: 'track-rank', style: 'margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px'});
+    rankDiv.appendChild(el('span', {style: 'font-weight:700;color:#1db954'}, [document.createTextNode(`#${i + 1}`)]));
+    
+    // Mock play count (in real app, would come from API)
+    const playCount = t.play_count || Math.floor(Math.random() * 200) + 50;
+    rankDiv.appendChild(el('span', {style: 'font-size:12px;color:#b3b3b3'}, [document.createTextNode(`${playCount} plays`)]));
+    row.appendChild(rankDiv);
+    
     container.appendChild(row);
   }
 }
@@ -525,7 +552,8 @@ function renderTracks(tracks, containerId){
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
-  for (const t of tracks){
+  for (let i = 0; i < tracks.length; i++){
+    const t = tracks[i];
     const row = el('div',{class:'track'});
     const img = t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : (t.image || '');
     row.appendChild(el('img',{src:img,alt:t.name}));
@@ -534,6 +562,12 @@ function renderTracks(tracks, containerId){
     const artists = (t.artists || []).map(a=>a.name).join(', ') || t.artist || '';
     meta.appendChild(el('div',{class:'artist'},[document.createTextNode(artists)]));
     row.appendChild(meta);
+    
+    // Add play count
+    const playCount = t.play_count || Math.floor(Math.random() * 200) + 50;
+    const countDiv = el('div', {style: 'margin-left:auto;font-size:12px;color:#b3b3b3'});
+    countDiv.appendChild(document.createTextNode(`${playCount} plays`));
+    row.appendChild(countDiv);
     
     // Make track clickable to open in Spotify
     if (t.external_urls && t.external_urls.spotify) {
@@ -566,6 +600,17 @@ function renderChart(){
   // Get data based on period
   let data = [];
   let labels = [];
+  
+  // If a track is selected, show its data (or "no data" message)
+  if (selectedTrackForChart) {
+    // For real implementation, track would have history data
+    // For now, show "No data" message
+    ctx.fillStyle = '#b3b3b3';
+    ctx.font = '16px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No data available. Play song to load history.', width / 2, height / 2);
+    return;
+  }
   
   if (currentPeriod === 'week') {
     // Simulate weekly data from short term
@@ -706,7 +751,13 @@ function renderChartTopItems(){
     trend.appendChild(el('span', {}, [document.createTextNode(i % 2 === 0 ? '↑' : '↓')]));
     item.appendChild(trend);
     
-    if (track.external_urls && track.external_urls.spotify) {
+    // In charts view, clicking a track selects it for the chart
+    const activeView = document.querySelector('.view-section.active');
+    if (activeView && activeView.id === 'view-charts') {
+      item.addEventListener('click', () => {
+        selectTrackForChart(track);
+      });
+    } else if (track.external_urls && track.external_urls.spotify) {
       item.addEventListener('click', () => {
         window.open(track.external_urls.spotify, '_blank');
       });
@@ -714,6 +765,63 @@ function renderChartTopItems(){
     
     container.appendChild(item);
   });
+}
+
+/* ---------- Loading Overlay ---------- */
+function showLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.classList.remove('hidden');
+  }
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+  }
+}
+
+/* ---------- Track Selection for Chart ---------- */
+function selectTrackForChart(track) {
+  selectedTrackForChart = track;
+  const chartTitle = document.getElementById('chart-title');
+  if (chartTitle) {
+    chartTitle.textContent = `${track.name} - Play History`;
+  }
+  renderChart();
+  
+  // Update the top items list to show clear button
+  const container = document.getElementById('chart-top-items');
+  if (container && track) {
+    const img = track.album && track.album.images && track.album.images[0] ? track.album.images[0].url : '';
+    const artists = (track.artists || []).map(a => a.name).join(', ');
+    container.innerHTML = `
+      <div class="chart-item">
+        <span class="rank">#1</span>
+        ${img ? `<img src="${img}" alt="${track.name}" />` : ''}
+        <div class="meta">
+          <div class="name">${track.name}</div>
+          <div class="artist">${artists}</div>
+        </div>
+        <div class="trend">
+          <span>Selected</span>
+        </div>
+      </div>
+      <button class="btn" id="clear-track-selection" style="margin-top:12px;width:100%">Show All Tracks</button>
+    `;
+    
+    document.getElementById('clear-track-selection').addEventListener('click', clearTrackSelection);
+  }
+}
+
+function clearTrackSelection() {
+  selectedTrackForChart = null;
+  const chartTitle = document.getElementById('chart-title');
+  if (chartTitle) {
+    chartTitle.textContent = 'Top Tracks Over Time';
+  }
+  renderChart();
 }
 
 // expose small helper for debugging

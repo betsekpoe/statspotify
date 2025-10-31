@@ -3,19 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>StatSpotify — Your Spotify stats</title>
+  <title>StatSpotify — Demo Mode</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Loading Spinner -->
-  <div class="loading-overlay" id="loading-overlay">
-    <div class="spinner"></div>
-    <div class="loading-text">Loading your stats...</div>
-  </div>
-
   <div class="app">
     <aside class="sidebar">
-      <div class="brand" id="brand-btn">StatSpotify</div>
+      <div class="brand">StatSpotify <span style="font-size:12px;color:#1db954">(Demo)</span></div>
       <nav class="nav">
         <button class="nav-item" data-view="top-tracks">Top Tracks</button>
         <button class="nav-item" data-view="top-artists">Top Artists</button>
@@ -23,8 +17,7 @@
         <button class="nav-item" data-view="playlists">Playlists</button>
       </nav>
       <div class="sidebar-bottom">
-        <button id="login-btn" class="btn primary">Connect Spotify</button>
-        <button id="logout-btn" class="btn" style="display:none">Sign out</button>
+        <a href="/" class="btn primary" style="text-align:center;text-decoration:none;display:block">Exit Demo</a>
       </div>
     </aside>
 
@@ -38,20 +31,13 @@
         </div>
       </header>
 
-      
-
       <main class="main">
         <!-- Home View -->
         <section class="view-section active" id="view-home">
-          <section class="hero" id="hero-section">
+          <section class="hero" id="hero-section" style="display:none">
             <h1>Your Spotify stats, beautifully visualized</h1>
-            <p>Connect with Spotify to view your top tracks, artists and listening insights.</p>
+            <p>This is demo mode with sample data.</p>
           </section>
-
-          <!-- Mobile login button (shown when not logged in) -->
-      <div class="mobile-login" id="mobile-login-btn">
-        <button class="btn primary">Connect Spotify</button>
-      </div>
 
           <section class="cards" id="cards">
             <!-- dynamic cards: top tracks / artists / albums -->
@@ -142,6 +128,6 @@
     </nav>
   </div>
 
-  <script src="app.js" type="module"></script>
+  <script src="demo.js" type="module"></script>
 </body>
 </html>
