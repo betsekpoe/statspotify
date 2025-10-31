@@ -687,11 +687,19 @@ function renderTracks(tracks, containerId){
     // countDiv.appendChild(document.createTextNode(`${playCount} plays`));
     // row.appendChild(countDiv);
     
-    // Make track clickable to show details
+    // Make track clickable to open in Spotify (temporary workaround for 403 errors)
     row.style.cursor = 'pointer';
-    row.addEventListener('click', () => {
-      showTrackDetails(t);
-    });
+    if (t.external_urls && t.external_urls.spotify) {
+      row.addEventListener('click', () => {
+        window.open(t.external_urls.spotify, '_blank');
+      });
+    }
+    
+    // COMMENTED OUT: Detailed track stats view (403 errors with audio features API)
+    // Uncomment when API permissions are resolved
+    // row.addEventListener('click', () => {
+    //   showTrackDetails(t);
+    // });
     
     container.appendChild(row);
   }
@@ -954,7 +962,10 @@ function clearTrackSelection() {
   renderChart();
 }
 
-/* ---------- Track Details View ---------- */
+/* ---------- Track Details View (COMMENTED OUT - 403 API errors) ---------- */
+/* Uncomment when Spotify API audio-features permissions are resolved */
+
+/*
 async function showTrackDetails(track) {
   // Don't show full-screen spinner, just show skeleton
   switchView('track-details');
@@ -1336,6 +1347,9 @@ function drawMoodQuadrant(valence, energy) {
   ctx.arc(x, y, 16, 0, Math.PI * 2);
   ctx.fill();
 }
+*/
+
+/* End of commented track details view code */
 
 // expose small helper for debugging
-window.statspotify = {onLoginClicked, onLogout, attemptRefresh, switchView, showTrackDetails};
+window.statspotify = {onLoginClicked, onLogout, attemptRefresh, switchView};
