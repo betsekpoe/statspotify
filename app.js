@@ -11,11 +11,22 @@ const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 
 let demoMode = false;
 let currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
+let allData = { topTracks: [], topArtists: [], playlists: [] }; // Store unfiltered data for search
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-btn').addEventListener('click', onLoginClicked);
   document.getElementById('logout-btn').addEventListener('click', onLogout);
   document.getElementById('brand-btn').addEventListener('click', () => switchView('home'));
+  
+  // Mobile login button
+  const mobileLoginBtn = document.getElementById('mobile-login-btn');
+  if (mobileLoginBtn) {
+    mobileLoginBtn.querySelector('button').addEventListener('click', onLoginClicked);
+  }
+  
+  // Search functionality
+  const searchInput = document.getElementById('search-input');
+  searchInput.addEventListener('input', (e) => handleSearch(e.target.value));
   
   // Setup nav item listeners
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -205,12 +216,16 @@ async function attemptRefresh(){
 function showLoggedIn(is){
   const loginBtn = document.getElementById('login-btn');
   const logoutBtn = document.getElementById('logout-btn');
+  const mobileLoginBtn = document.getElementById('mobile-login-btn');
+  
   if (is) {
     if (loginBtn) loginBtn.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = '';
+    if (mobileLoginBtn) mobileLoginBtn.style.display = 'none';
   } else {
     if (loginBtn) loginBtn.style.display = '';
     if (logoutBtn) logoutBtn.style.display = 'none';
+    if (mobileLoginBtn) mobileLoginBtn.style.display = '';
   }
 }
 
@@ -248,6 +263,13 @@ async function fetchAndRender(tokenObj){
     const topArtists = await apiGet('/v1/me/top/artists?limit=50&time_range=medium_term', access_token);
     const playlists = await apiGet('/v1/me/playlists?limit=50', access_token);
     
+    // Store both current (filtered) and all (unfiltered) data
+    allData = {
+      topTracks: topTracks.items,
+      topArtists: topArtists.items,
+      playlists: playlists.items
+    };
+    
     currentData = {
       me,
       topTracks: topTracks.items,
@@ -282,6 +304,12 @@ async function loadDemo(){
   const resp = await fetch('sample_data.json');
   const demo = await resp.json();
   
+  allData = {
+    topTracks: demo.top_tracks || [],
+    topArtists: demo.top_artists || [],
+    playlists: demo.playlists || []
+  };
+  
   currentData = {
     me: demo.profile,
     topTracks: demo.top_tracks || [],
@@ -295,6 +323,34 @@ async function loadDemo(){
   renderTopArtistsView();
   renderPlaylistsView();
   hideNotice();
+}
+
+/* ---------- Search ---------- */
+function handleSearch(query){
+  if (!query.trim()) {
+    // Reset to all data
+    currentData.topTracks = allData.topTracks;
+    currentData.topArtists = allData.topArtists;
+    currentData.playlists = allData.playlists;
+  } else {
+    const lowerQuery = query.toLowerCase();
+    currentData.topTracks = allData.topTracks.filter(t => 
+      t.name.toLowerCase().includes(lowerQuery) || 
+      (t.artists && t.artists.some(a => a.name.toLowerCase().includes(lowerQuery)))
+    );
+    currentData.topArtists = allData.topArtists.filter(a => 
+      a.name.toLowerCase().includes(lowerQuery)
+    );
+    currentData.playlists = allData.playlists.filter(p => 
+      p.name.toLowerCase().includes(lowerQuery)
+    );
+  }
+  
+  // Re-render current view
+  renderHomeView();
+  renderTopTracksView();
+  renderTopArtistsView();
+  renderPlaylistsView();
 }
 
 /* ---------- Render helpers ---------- */
@@ -366,6 +422,15 @@ function renderPlaylistsView(){
     card.appendChild(el('div',{class:'name'},[document.createTextNode(playlist.name)]));
     const trackCount = `${playlist.tracks.total} tracks`;
     card.appendChild(el('div',{class:'track-count'},[document.createTextNode(trackCount)]));
+    
+    // Make playlist clickable to open in Spotify
+    if (playlist.external_urls && playlist.external_urls.spotify) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => {
+        window.open(playlist.external_urls.spotify, '_blank');
+      });
+    }
+    
     container.appendChild(card);
   }
 }
@@ -433,6 +498,14 @@ function renderTracks(tracks, containerId){
     const artists = (t.artists || []).map(a=>a.name).join(', ') || t.artist || '';
     meta.appendChild(el('div',{class:'artist'},[document.createTextNode(artists)]));
     row.appendChild(meta);
+    
+    // Make track clickable to open in Spotify
+    if (t.external_urls && t.external_urls.spotify) {
+      row.addEventListener('click', () => {
+        window.open(t.external_urls.spotify, '_blank');
+      });
+    }
+    
     container.appendChild(row);
   }
 }

@@ -42,7 +42,8 @@ body{
 .card .value{font-size:20px;font-weight:600}
 
 .track-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
-.track{display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)}
+.track{display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);cursor:pointer;transition:background 0.2s}
+.track:hover{background:rgba(255,255,255,0.05)}
 .track img{width:56px;height:56px;border-radius:6px;object-fit:cover}
 .track .meta{display:flex;flex-direction:column}
 .track .meta .name{font-weight:600}
@@ -71,10 +72,14 @@ body{
 
 .mobile-nav{display:none}
 
+.mobile-login{display:none;padding:16px;background:var(--surface);border-bottom:1px solid rgba(255,255,255,0.03)}
+.mobile-login button{width:100%;padding:12px}
+
 @media (max-width:800px){
   .app{padding-bottom:70px}
   .sidebar{display:none}
   .search input{min-width:120px}
+  .mobile-login{display:block}
   .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid rgba(255,255,255,0.03);padding:8px;justify-content:space-around;z-index:1000}
   .mobile-nav-item{background:transparent;border:none;color:var(--muted);padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:11px;flex:1}
   .mobile-nav-item svg{width:20px;height:20px}
