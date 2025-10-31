@@ -96,8 +96,8 @@ body{
 
 .mobile-nav{display:none}
 
-.mobile-login{display:none;padding:16px;background:var(--surface);border-bottom:1px solid rgba(255,255,255,0.03)}
-.mobile-login button{width:100%;padding:12px}
+.mobile-login{display:none;padding:16px;}
+.mobile-login button{width:60%;padding:12px}
 
 @media (max-width:800px){
   .app{padding-bottom:70px}
