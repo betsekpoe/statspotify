@@ -28,6 +28,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('refresh-btn').addEventListener('click', onRefresh);
   document.getElementById('brand-btn').addEventListener('click', () => switchView('home'));
   
+  // Mobile profile dropdown
+  document.getElementById('mobile-refresh-btn').addEventListener('click', () => {
+    hideProfileDropdown();
+    onRefresh();
+  });
+  document.getElementById('mobile-logout-btn').addEventListener('click', () => {
+    hideProfileDropdown();
+    onLogout();
+  });
+  
   // Mobile login button
   const mobileLoginBtn = document.getElementById('mobile-login-btn');
   if (mobileLoginBtn) {
@@ -96,6 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   }
+  
+  // Close profile dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const profileArea = document.getElementById('profile-area');
+    const dropdown = document.getElementById('profile-dropdown');
+    if (profileArea && dropdown && !profileArea.contains(e.target) && !dropdown.contains(e.target)) {
+      hideProfileDropdown();
+    }
+  });
 });
 
 function el(tag, attrs = {}, children = []){
@@ -744,7 +763,7 @@ function renderProfile(me){
   
   if (me.images && me.images[0]) {
     // User has a profile picture
-    const img = el('img', {src: me.images[0].url});
+    const img = el('img', {src: me.images[0].url, alt: 'Profile'});
     area.appendChild(img);
   } else {
     // No profile picture - show first letter of name
@@ -752,6 +771,24 @@ function renderProfile(me){
     const initial = displayName.charAt(0).toUpperCase();
     const initialDiv = el('div', {class: 'profile-initial'}, [document.createTextNode(initial)]);
     area.appendChild(initialDiv);
+  }
+  
+  // Add click handler to toggle dropdown on mobile
+  area.addEventListener('click', toggleProfileDropdown);
+}
+
+function toggleProfileDropdown(){
+  const dropdown = document.getElementById('profile-dropdown');
+  if (dropdown) {
+    const isVisible = dropdown.style.display !== 'none';
+    dropdown.style.display = isVisible ? 'none' : 'block';
+  }
+}
+
+function hideProfileDropdown(){
+  const dropdown = document.getElementById('profile-dropdown');
+  if (dropdown) {
+    dropdown.style.display = 'none';
   }
 }
 

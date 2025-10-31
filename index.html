@@ -37,8 +37,19 @@
         <div class="search">
           <input id="search-input" placeholder="Search tracks, artists..." />
         </div>
-        <div class="profile" id="profile-area">
-          <!-- profile inserted here -->
+        <div class="profile-container">
+          <div class="profile" id="profile-area">
+            <!-- profile inserted here -->
+          </div>
+          <!-- Mobile profile dropdown -->
+          <div class="profile-dropdown" id="profile-dropdown" style="display:none">
+            <button class="profile-dropdown-item" id="mobile-refresh-btn">
+              <span>🔄</span> Refresh Data
+            </button>
+            <button class="profile-dropdown-item" id="mobile-logout-btn">
+              <span>🚪</span> Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
