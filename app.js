@@ -10,11 +10,29 @@ const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 
 let demoMode = false;
+let currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-btn').addEventListener('click', onLoginClicked);
-  document.getElementById('demo-btn').addEventListener('click', () => loadDemo());
   document.getElementById('logout-btn').addEventListener('click', onLogout);
+  document.getElementById('brand-btn').addEventListener('click', () => switchView('home'));
+  
+  // Setup nav item listeners
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const view = e.target.getAttribute('data-view');
+      switchView(view);
+    });
+  });
+  
+  // Setup mobile nav listeners
+  document.querySelectorAll('.mobile-nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const view = e.currentTarget.getAttribute('data-view');
+      switchView(view);
+    });
+  });
+  
   const params = new URLSearchParams(window.location.search);
   if (params.get('code')) {
     handleRedirect();
@@ -152,6 +170,12 @@ function showNotice(msg){
     document.querySelector('.main').prepend(n);
   }
   n.textContent = msg;
+  n.style.display = msg ? '' : 'none';
+}
+
+function hideNotice(){
+  const n = document.querySelector('.notice');
+  if (n) n.style.display = 'none';
 }
 
 async function attemptRefresh(){
@@ -160,7 +184,7 @@ async function attemptRefresh(){
     const resp = await fetch('/api/refresh', { method: 'POST' });
     if (!resp.ok) {
       // no active session or refresh failed
-      showNotice('');
+      hideNotice();
       return null;
     }
     const tokenObj = await resp.json();
@@ -173,22 +197,19 @@ async function attemptRefresh(){
     }
   }catch(err){
     console.error('refresh attempt failed', err);
-    showNotice('');
+    hideNotice();
   }
   return null;
 }
 
 function showLoggedIn(is){
   const loginBtn = document.getElementById('login-btn');
-  const demoBtn = document.getElementById('demo-btn');
   const logoutBtn = document.getElementById('logout-btn');
   if (is) {
     if (loginBtn) loginBtn.style.display = 'none';
-    if (demoBtn) demoBtn.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = '';
   } else {
     if (loginBtn) loginBtn.style.display = '';
-    if (demoBtn) demoBtn.style.display = '';
     if (logoutBtn) logoutBtn.style.display = 'none';
   }
 }
@@ -199,10 +220,15 @@ async function onLogout(){
   }catch(e){console.warn('logout call failed', e)}
   localStorage.removeItem('spotify_token');
   showLoggedIn(false);
+  currentData = { me: null, topTracks: [], topArtists: [], playlists: [] };
   // clear UI
   document.getElementById('profile-area').innerHTML = '';
   document.getElementById('cards').innerHTML = '';
+  document.getElementById('home-top-tracks').innerHTML = '';
   document.getElementById('top-tracks').innerHTML = '';
+  document.getElementById('top-artists').innerHTML = '';
+  document.getElementById('playlists').innerHTML = '';
+  switchView('home');
   showNotice('Signed out');
 }
 
@@ -213,12 +239,24 @@ async function fetchAndRender(tokenObj){
   try{
     const access_token = tokenObj.access_token;
     const me = await apiGet('/v1/me', access_token);
-    const topTracks = await apiGet('/v1/me/top/tracks?limit=10', access_token);
-    const topArtists = await apiGet('/v1/me/top/artists?limit=6', access_token);
+    const topTracks = await apiGet('/v1/me/top/tracks?limit=50&time_range=medium_term', access_token);
+    const topArtists = await apiGet('/v1/me/top/artists?limit=50&time_range=medium_term', access_token);
+    const playlists = await apiGet('/v1/me/playlists?limit=50', access_token);
+    
+    currentData = {
+      me,
+      topTracks: topTracks.items,
+      topArtists: topArtists.items,
+      playlists: playlists.items
+    };
+    
     renderProfile(me);
-    renderCards({topTracks: topTracks.items, topArtists: topArtists.items});
-    renderTopTracks(topTracks.items);
-    showNotice('');
+    renderHomeView();
+    renderTopTracksView();
+    renderTopArtistsView();
+    renderPlaylistsView();
+    
+    hideNotice();
     showLoggedIn(true);
   }catch(err){
     console.error(err);
@@ -238,13 +276,91 @@ async function loadDemo(){
   showNotice('Loading demo data...');
   const resp = await fetch('sample_data.json');
   const demo = await resp.json();
+  
+  currentData = {
+    me: demo.profile,
+    topTracks: demo.top_tracks || [],
+    topArtists: demo.top_artists || [],
+    playlists: demo.playlists || []
+  };
+  
   renderProfile(demo.profile);
-  renderCards({topTracks: demo.top_tracks.slice(0,6), topArtists: demo.top_artists.slice(0,6)});
-  renderTopTracks(demo.top_tracks.slice(0,20));
-  showNotice('Demo data loaded — no Spotify account needed.');
+  renderHomeView();
+  renderTopTracksView();
+  renderTopArtistsView();
+  renderPlaylistsView();
+  hideNotice();
 }
 
 /* ---------- Render helpers ---------- */
+function switchView(view){
+  // Hide all views
+  document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
+  
+  // Show selected view
+  const viewMap = {
+    'home': 'view-home',
+    'top-tracks': 'view-top-tracks',
+    'top-artists': 'view-top-artists',
+    'playlists': 'view-playlists'
+  };
+  
+  const viewId = viewMap[view] || 'view-home';
+  const viewEl = document.getElementById(viewId);
+  if (viewEl) viewEl.classList.add('active');
+  
+  // Update nav active state
+  if (view !== 'home') {
+    const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
+    if (navItem) navItem.classList.add('active');
+    
+    const mobileNavItem = document.querySelector(`.mobile-nav-item[data-view="${view}"]`);
+    if (mobileNavItem) mobileNavItem.classList.add('active');
+  } else {
+    const mobileNavItem = document.querySelector(`.mobile-nav-item[data-view="home"]`);
+    if (mobileNavItem) mobileNavItem.classList.add('active');
+  }
+}
+
+function renderHomeView(){
+  renderCards({topTracks: currentData.topTracks.slice(0,6), topArtists: currentData.topArtists.slice(0,6)});
+  renderTracks(currentData.topTracks.slice(0,10), 'home-top-tracks');
+}
+
+function renderTopTracksView(){
+  renderTracks(currentData.topTracks, 'top-tracks');
+}
+
+function renderTopArtistsView(){
+  const container = document.getElementById('top-artists');
+  container.innerHTML = '';
+  for (const artist of currentData.topArtists){
+    const card = el('div',{class:'artist-card'});
+    const img = artist.images && artist.images[0] ? artist.images[0].url : 'https://via.placeholder.com/300?text=Artist';
+    card.appendChild(el('img',{src:img,alt:artist.name}));
+    card.appendChild(el('div',{class:'name'},[document.createTextNode(artist.name)]));
+    const followers = artist.followers ? `${(artist.followers.total / 1000).toFixed(1)}K followers` : '';
+    card.appendChild(el('div',{class:'followers'},[document.createTextNode(followers)]));
+    container.appendChild(card);
+  }
+}
+
+function renderPlaylistsView(){
+  const container = document.getElementById('playlists');
+  container.innerHTML = '';
+  for (const playlist of currentData.playlists){
+    const card = el('div',{class:'playlist-card'});
+    const img = playlist.images && playlist.images[0] ? playlist.images[0].url : 'https://via.placeholder.com/300?text=Playlist';
+    card.appendChild(el('img',{src:img,alt:playlist.name}));
+    card.appendChild(el('div',{class:'name'},[document.createTextNode(playlist.name)]));
+    const trackCount = `${playlist.tracks.total} tracks`;
+    card.appendChild(el('div',{class:'track-count'},[document.createTextNode(trackCount)]));
+    container.appendChild(card);
+  }
+}
+
 function renderProfile(me){
   const area = document.getElementById('profile-area');
   area.innerHTML = '';
@@ -295,5 +411,22 @@ function renderTopTracks(tracks){
   }
 }
 
+function renderTracks(tracks, containerId){
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  for (const t of tracks){
+    const row = el('div',{class:'track'});
+    const img = t.album && t.album.images && t.album.images[0] ? t.album.images[0].url : (t.image || '');
+    row.appendChild(el('img',{src:img,alt:t.name}));
+    const meta = el('div',{class:'meta'});
+    meta.appendChild(el('div',{class:'name'},[document.createTextNode(t.name)]));
+    const artists = (t.artists || []).map(a=>a.name).join(', ') || t.artist || '';
+    meta.appendChild(el('div',{class:'artist'},[document.createTextNode(artists)]));
+    row.appendChild(meta);
+    container.appendChild(row);
+  }
+}
+
 // expose small helper for debugging
-window.statspotify = {loadDemo, onLoginClicked, onLogout, attemptRefresh};
+window.statspotify = {loadDemo, onLoginClicked, onLogout, attemptRefresh, switchView};

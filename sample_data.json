@@ -14,11 +14,17 @@
     {"name":"Paper Moon","artists":[{"name":"Moonrise"}],"album":{"images":[{"url":"https://via.placeholder.com/640?text=Album+8"}]},"image":"https://via.placeholder.com/56?text=8"}
   ],
   "top_artists": [
-    {"name":"Neon Waves","images":[{"url":"https://via.placeholder.com/640?text=Artist+1"}]},
-    {"name":"The NightShift","images":[{"url":"https://via.placeholder.com/640?text=Artist+2"}]},
-    {"name":"Blue Echo","images":[{"url":"https://via.placeholder.com/640?text=Artist+3"}]},
-    {"name":"Stereo Heart","images":[{"url":"https://via.placeholder.com/640?text=Artist+4"}]},
-    {"name":"Lumen","images":[{"url":"https://via.placeholder.com/640?text=Artist+5"}]},
-    {"name":"Hush","images":[{"url":"https://via.placeholder.com/640?text=Artist+6"}]}
+    {"name":"Neon Waves","images":[{"url":"https://via.placeholder.com/640?text=Artist+1"}],"followers":{"total":125000}},
+    {"name":"The NightShift","images":[{"url":"https://via.placeholder.com/640?text=Artist+2"}],"followers":{"total":98000}},
+    {"name":"Blue Echo","images":[{"url":"https://via.placeholder.com/640?text=Artist+3"}],"followers":{"total":87000}},
+    {"name":"Stereo Heart","images":[{"url":"https://via.placeholder.com/640?text=Artist+4"}],"followers":{"total":76000}},
+    {"name":"Lumen","images":[{"url":"https://via.placeholder.com/640?text=Artist+5"}],"followers":{"total":65000}},
+    {"name":"Hush","images":[{"url":"https://via.placeholder.com/640?text=Artist+6"}],"followers":{"total":54000}}
+  ],
+  "playlists": [
+    {"name":"Chill Vibes","images":[{"url":"https://via.placeholder.com/300?text=Playlist+1"}],"tracks":{"total":42}},
+    {"name":"Workout Mix","images":[{"url":"https://via.placeholder.com/300?text=Playlist+2"}],"tracks":{"total":35}},
+    {"name":"Focus Flow","images":[{"url":"https://via.placeholder.com/300?text=Playlist+3"}],"tracks":{"total":28}},
+    {"name":"Evening Moods","images":[{"url":"https://via.placeholder.com/300?text=Playlist+4"}],"tracks":{"total":50}}
   ]
 }
