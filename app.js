@@ -1,6 +1,8 @@
 // Basic StatSpotify frontend (ES module)
 // CONFIG: paste your Spotify client id here if you want to try a real login flow.
 // NOTE: token exchange may be blocked by CORS on Spotify's token endpoint; see README for a serverless exchange example.
+// CONFIG: the public Spotify client id (safe to expose). PKCE flow uses this.
+// NOTE: token exchange happens server-side in /api/exchange (keeps client secret safe).
 const CLIENT_ID = 'f08fbf07534e4f399933d3b12e54f6fd';
 const REDIRECT_URI = window.location.origin + window.location.pathname;
 const SCOPES = 'user-top-read user-read-private user-read-email';
