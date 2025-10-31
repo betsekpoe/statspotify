@@ -36,8 +36,28 @@ module.exports = async (req, res) => {
     });
 
     const json = await tokenResp.json();
-    // forward status and body
-    return res.status(tokenResp.ok ? 200 : 500).json(json);
+    // If successful, store the refresh_token in a secure, httpOnly cookie and return only the access token to the client
+    if (tokenResp.ok) {
+      const refreshToken = json.refresh_token;
+      if (refreshToken) {
+        // set cookie for 30 days
+        const maxAge = 60 * 60 * 24 * 30; // 30 days in seconds
+        const cookie = `spotify_refresh=${encodeURIComponent(refreshToken)}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax; ${process.env.NODE_ENV === 'production' ? 'Secure; ' : ''}`;
+        res.setHeader('Set-Cookie', cookie);
+      }
+
+      // return only non-sensitive token info to the client
+      const safe = {
+        access_token: json.access_token,
+        token_type: json.token_type,
+        expires_in: json.expires_in,
+        scope: json.scope
+      };
+      return res.status(200).json(safe);
+    }
+
+    // forward error body (do not leak secrets)
+    return res.status(500).json(json);
   } catch (err) {
     console.error('exchange error', err);
     return res.status(500).json({ error: 'exchange_failed', message: String(err) });

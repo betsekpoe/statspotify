@@ -14,6 +14,7 @@ let demoMode = false;
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-btn').addEventListener('click', onLoginClicked);
   document.getElementById('demo-btn').addEventListener('click', () => loadDemo());
+  document.getElementById('logout-btn').addEventListener('click', onLogout);
   const params = new URLSearchParams(window.location.search);
   if (params.get('code')) {
     handleRedirect();
@@ -22,6 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = getStoredToken();
     if (token) {
       fetchAndRender(token);
+    } else {
+      // try server-side refresh using cookie
+      attemptRefresh();
     }
   }
 });
@@ -150,6 +154,58 @@ function showNotice(msg){
   n.textContent = msg;
 }
 
+async function attemptRefresh(){
+  showNotice('Checking session...');
+  try{
+    const resp = await fetch('/api/refresh', { method: 'POST' });
+    if (!resp.ok) {
+      // no active session or refresh failed
+      showNotice('');
+      return null;
+    }
+    const tokenObj = await resp.json();
+    if (tokenObj && tokenObj.access_token) {
+      storeToken(tokenObj);
+      fetchAndRender(tokenObj);
+      // show logout button
+      showLoggedIn(true);
+      return tokenObj;
+    }
+  }catch(err){
+    console.error('refresh attempt failed', err);
+    showNotice('');
+  }
+  return null;
+}
+
+function showLoggedIn(is){
+  const loginBtn = document.getElementById('login-btn');
+  const demoBtn = document.getElementById('demo-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  if (is) {
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (demoBtn) demoBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = '';
+  } else {
+    if (loginBtn) loginBtn.style.display = '';
+    if (demoBtn) demoBtn.style.display = '';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+  }
+}
+
+async function onLogout(){
+  try{
+    await fetch('/api/logout', { method: 'POST' });
+  }catch(e){console.warn('logout call failed', e)}
+  localStorage.removeItem('spotify_token');
+  showLoggedIn(false);
+  // clear UI
+  document.getElementById('profile-area').innerHTML = '';
+  document.getElementById('cards').innerHTML = '';
+  document.getElementById('top-tracks').innerHTML = '';
+  showNotice('Signed out');
+}
+
 /* ---------- Fetch & render ---------- */
 async function fetchAndRender(tokenObj){
   demoMode = false;
@@ -163,6 +219,7 @@ async function fetchAndRender(tokenObj){
     renderCards({topTracks: topTracks.items, topArtists: topArtists.items});
     renderTopTracks(topTracks.items);
     showNotice('');
+    showLoggedIn(true);
   }catch(err){
     console.error(err);
     showNotice('Failed to fetch Spotify API data. Token may be invalid or network restricted.');
@@ -239,4 +296,4 @@ function renderTopTracks(tracks){
 }
 
 // expose small helper for debugging
-window.statspotify = {loadDemo, onLoginClicked};
+window.statspotify = {loadDemo, onLoginClicked, onLogout, attemptRefresh};
