@@ -380,14 +380,27 @@ async function fetchAndRender(tokenObj){
     const me = await apiGet('/v1/me', access_token);
     renderProfile(me);
     
-    // Fetch all data in parallel for better performance
-    const [shortTerm, mediumTerm, longTerm, topArtists, playlists, recentlyPlayed] = await Promise.all([
+    // Fetch recently played with error handling (requires user-read-recently-played scope)
+    let recentlyPlayed = { items: [] };
+    try {
+      recentlyPlayed = await apiGet('/v1/me/player/recently-played?limit=50', access_token);
+    } catch (err) {
+      if (err.message.includes('403') || err.message.includes('Insufficient client scope')) {
+        console.warn('Recently played requires re-authentication with new scopes. Skipping...');
+        showNotice('💡 Log out and log back in to see Recently Played tracks!');
+        setTimeout(hideNotice, 5000);
+      } else {
+        throw err;
+      }
+    }
+    
+    // Fetch all other data in parallel for better performance
+    const [shortTerm, mediumTerm, longTerm, topArtists, playlists] = await Promise.all([
       apiGet('/v1/me/top/tracks?limit=50&time_range=short_term', access_token),
       apiGet('/v1/me/top/tracks?limit=50&time_range=medium_term', access_token),
       apiGet('/v1/me/top/tracks?limit=50&time_range=long_term', access_token),
       apiGet('/v1/me/top/artists?limit=50&time_range=medium_term', access_token),
-      apiGet('/v1/me/playlists?limit=50', access_token),
-      apiGet('/v1/me/player/recently-played?limit=50', access_token)
+      apiGet('/v1/me/playlists?limit=50', access_token)
     ]);
     
     chartData = {
@@ -681,8 +694,19 @@ function renderRecentlyPlayedView(){
   if (!container) return;
   container.innerHTML = '';
   
-  const fragment = document.createDocumentFragment();
   const tracks = currentData.recentlyPlayed || [];
+  
+  // Show message if no tracks available
+  if (tracks.length === 0) {
+    const message = el('div', {style: 'text-align:center;padding:60px 20px;color:var(--muted)'});
+    message.appendChild(el('div', {style: 'font-size:48px;margin-bottom:16px'}, [document.createTextNode('🎵')]));
+    message.appendChild(el('h3', {style: 'margin:0 0 8px 0;color:#fff'}, [document.createTextNode('No Recently Played Tracks')]));
+    message.appendChild(el('p', {style: 'margin:0;max-width:400px;margin:0 auto'}, [document.createTextNode('Please log out and log back in to grant access to your recently played tracks.')]));
+    container.appendChild(message);
+    return;
+  }
+  
+  const fragment = document.createDocumentFragment();
   
   for (let i = 0; i < tracks.length; i++){
     const t = tracks[i];
