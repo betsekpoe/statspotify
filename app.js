@@ -493,8 +493,10 @@ async function handleSearch(query){
     try {
       const results = await apiGet(`/v1/search?q=${encodeURIComponent(query)}&type=track,artist&limit=20`, token.access_token);
       
+      // Store search results but preserve playlists
       currentData.topTracks = results.tracks ? results.tracks.items : [];
       currentData.topArtists = results.artists ? results.artists.items : [];
+      // Don't modify playlists during search - keep original data
       
       renderHomeView();
       renderTopTracksView();
@@ -510,6 +512,7 @@ async function handleSearch(query){
       currentData.topArtists = allData.topArtists.filter(a => 
         a.name.toLowerCase().includes(lowerQuery)
       );
+      // Keep playlists unchanged during local search too
       
       renderHomeView();
       renderTopTracksView();
